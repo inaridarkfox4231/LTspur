@@ -97,7 +97,7 @@ class visualizeSystem{
     this.unitArray.forEach(
       (u) => {
         let newSpur = spurPool.use();
-    		newSpur.setting(u.position, u.prevPosition, u.hue, this.spurLifespan);
+    		newSpur.setting(u.position, u.prevPosition, u.hue, this.spurLifespan, u.spurWeight);
     		this.spurArray.add(newSpur);
       }
     )
@@ -132,6 +132,7 @@ class unit{
 		this.properFrameCount = 0;
 		this.behaviorList = [];
     this.hue = hue;
+    this.spurWeight = random(3, 6);
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -173,7 +174,7 @@ class unit{
 class spur{
 	constructor(){
 	}
-	setting(pos, prevPos, hue, lifespanFrameCount){
+	setting(pos, prevPos, hue, lifespanFrameCount, weight){
 		this.startX = pos.x;
 		this.startY = pos.y;
 		this.endX = prevPos.x;
@@ -181,6 +182,7 @@ class spur{
 		this.hue = hue;
 		this.lifespanFrameCount = lifespanFrameCount;
 		this.coefficient = 240 / lifespanFrameCount;
+    this.weight = weight;
 	}
 	remove(){
 		this.belongingArray.remove(this);
@@ -191,7 +193,7 @@ class spur{
 		if(this.lifespanFrameCount < 0){ this.remove(); }
 	}
 	display(){
-		strokeWeight(3);
+		strokeWeight(this.weight);
     let saturation = this.lifespanFrameCount * this.coefficient;
 		stroke(this.hue, saturation, 240, saturation);
 		line(this.startX, this.startY, this.endX, this.endY);
