@@ -24,6 +24,12 @@ function preload(){
   // しばらくはダミー画像使ってください（色々めんどくさいので）
 }
 
+// 余白280の使い方。
+// 数字のスペースは上部の280x160のところ。
+// 100, 180が横、40, 120が縦。そんな感じ。
+// その次の280x160で横のサークルスライダーを4本用意する。ひとつひとつが縦40のスペースを用い、
+// 長さ200で半径10(直径20).
+
 function setup(){
   createCanvas(760, 480);
   colorMode(HSB, 240);
@@ -39,7 +45,19 @@ function keyTyped(){
   }
 }
 
+function mousePressed(){
+  system.elementControllerArray.forEach((eachSlider) => {
+    if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
+  })
+}
+
+function mouseReleased(){
+  system.elementControllerArray.every("inActivate");
+  system.elementUpdate();
+}
+
 function draw(){
+	const start = performance.now(); // 時間表示。
   background(0);
   translate(240, 240);
   // 白線で座標軸 座標軸やめよう
@@ -53,6 +71,11 @@ function draw(){
   //fill(0, 0, 100);
   //stroke(0);
 	//text(spurPool.nextFreeSlot, 50, 50);
+  const end = performance.now();
+  const timeStr = (end - start).toPrecision(4);
+  let innerText = `${timeStr}ms`;
+  fill(0, 0, 240);
+  text(innerText, 0, 100);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -61,20 +84,53 @@ class visualizeSystem{
   constructor(){
     this.unitArray = new CrossReferenceArray();
     this.spurArray = new CrossReferenceArray();
-    this.setUnitInterval = 3;
+    this.setUnitInterval = 6;
     this.properFrameCount = 0; // パターン変更の際にリセットする感じ？
-    this.elems = [0.1, 2.0, -2.0, 0.1]; // これを用いてbehaviorをセットする感じ
+    this.elems = [1, 0, 0, 1]; // これを用いてbehaviorをセットする感じ
     this.unitLifespan = 60;
     this.spurLifespan = 60;
 		this.pivotHue = 160; // 基準となる色
     this.bandWidth = 40; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
+    this.elementControllerArray = new CrossReferenceArray();
+    this.prepareElementController();
+    this.elementUpdate();
+  }
+  prepareElementController(){
+    // 4本のスライダーを用意。横は？とりあえず-6～6(middleにする。short(2)とlong(10)は未実装).
+    let slider11 = new HorizontalSlider(-6, 6, new CircleCursor(10), -80, 260, 500, -240);
+    let slider12 = new HorizontalSlider(-6, 6, new CircleCursor(10), -40, 260, 500, -240);
+    let slider21 = new HorizontalSlider(-6, 6, new CircleCursor(10), 0, 260, 500, -240);
+    let slider22 = new HorizontalSlider(-6, 6, new CircleCursor(10), 40, 260, 500, -240);
+    // デフォルトを0, 1, -1, 0にする
+    slider11.setPosX(380);
+    slider12.setPosX(400);
+    slider21.setPosX(360);
+    slider22.setPosX(380);
+    // 登録
+    this.elementControllerArray.add(slider11);
+    this.elementControllerArray.add(slider12);
+    this.elementControllerArray.add(slider21);
+    this.elementControllerArray.add(slider22);
   }
   update(){
     this.properFrameCount++;
     if(this.properFrameCount % this.setUnitInterval === 0){ this.createUnit(); }
     this.spurArray.every("update");
     this.unitArray.every("update");
+    this.elementControllerArray.every("update");
+  }
+  elementUpdate(){
+    // 各種スライダーから値を取得してelementの値を更新する
+    for(let i = 0; i < 4; i++){
+      this.elems[i] = Math.floor(this.elementControllerArray[i].getValue() * 10) * 0.1;
+    }
+  }
+  colorBandUpdate(x1, x2){
+    // x1, x2のうち小さい方から大きい方、という風にいろいろいじる。
+    this.diffHue = 0;
+    this.pivotHue = Math.min(x1, x2);
+    this.bandWidth = abs(x1 - x2) + 1;
   }
   createUnit(){
     // ユニットを生成する
@@ -84,8 +140,11 @@ class visualizeSystem{
     if(this.diffHue > this.bandWidth){ hue = (this.pivotHue + 2 * this.bandWidth - this.diffHue) % 240; }
     let x = (random(1) * 2 - 1) * 240;
     let y = (random(1) * 2 - 1) * 240;
-    let toX = this.elems[0] * x + this.elems[1] * y;
-    let toY = this.elems[2] * x + this.elems[3] * y;
+    //let toX = this.elems[0] * x + this.elems[1] * y;
+    //let toY = this.elems[2] * x + this.elems[3] * y;
+    // applyMatrixしなくても下記のようにすればy軸上方の一次変換を適用できる(計算は簡単)。
+    let toX = this.elems[0] * x - this.elems[1] * y;
+    let toY = -this.elems[2] * x + this.elems[3] * y;
     let vx = (toX - x) / this.unitLifespan;
     let vy = (toY - y) / this.unitLifespan;
     let newUnit = new unit(hue);
@@ -115,10 +174,18 @@ class visualizeSystem{
     textSize(20);
     fill(0, 0, 240);
     stroke(0);
-    text(this.elems[0].toFixed(1), 300, -180);
-    text(this.elems[1].toFixed(1), 380, -180);
-    text(this.elems[2].toFixed(1), 300, -100);
-    text(this.elems[3].toFixed(1), 380, -100);
+    text(this.elementControllerArray[0].getValue().toFixed(1), 340, -200);
+    text(this.elementControllerArray[1].getValue().toFixed(1), 420, -200);
+    text(this.elementControllerArray[2].getValue().toFixed(1), 340, -140);
+    text(this.elementControllerArray[3].getValue().toFixed(1), 420, -140);
+    stroke(0, 0, 240);
+    strokeWeight(1.0);
+    line(260, -80, 500, -80);
+    line(260, -40, 500, -40);
+    line(260, 0, 500, 0);
+    line(260, 40, 500, 40);
+    noStroke();
+    this.elementControllerArray.every("display");
   }
 }
 
@@ -328,19 +395,23 @@ class Slider{
 
 // 縦のスライダー（ただし落ちない）
 class VerticalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posX, top, down){
+  constructor(minValue, maxValue, cursor, posX, top, down, offSetY = 0){
     super(minValue, maxValue, cursor);
     // 位置関係
     this.posX = posX;
     this.top = top; // 上
     this.down = down; // 下
     this.sliderPos = createVector(posX, top);
+    this.offSetY = offSetY; // 設置位置によってはmouseYを直接使えないことがあるので・・
   }
   update(){
     if(this.active){
       // 縦スライダー
-      this.sliderPos.set(this.posX, constrain(mouseY, this.top, this.down));
+      this.sliderPos.set(this.posX, constrain(mouseY + this.offSetY, this.top, this.down));
     }
+  }
+  setPosY(y){
+    this.sliderPos.y = y;
   }
   getValue(){
     // 縦スライダー
@@ -350,19 +421,23 @@ class VerticalSlider extends Slider{
 
 // 横のスライダー、今回使うのはこっち（変化球ではない）
 class HorizontalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posY, left, right){
+  constructor(minValue, maxValue, cursor, posY, left, right, offSetX = 0){
     super(minValue, maxValue, cursor);
     // 位置関係
     this.posY = posY;
     this.left = left; // 左
     this.right = right; // 右
     this.sliderPos = createVector(left, posY);
+    this.offSetX = offSetX; // 設置位置によってはmouseXを直接・・以下略。
   }
   update(){
     if(this.active){
       // 横スライダー
-      this.sliderPos.set(constrain(mouseX, this.left, this.right), this.posY);
+      this.sliderPos.set(constrain(mouseX + this.offSetX, this.left, this.right), this.posY);
     }
+  }
+  setPosX(x){
+    this.sliderPos.x = x;
   }
   getValue(){
     // 横スライダー
