@@ -1,15 +1,9 @@
 // 仕様
 // 720x480
-// spurの生成器をユニットと名付ける。
-// 10fcごとにランダムで1箇所にユニットを発生させる（120fcで消える）。
-// その際に60fcで消えるspurを作り出す感じ。
-// 120fcかけて変換先まで移動する感じですかね・・・・
 
-// behaviorとしては自然消滅でいいんじゃない・・速度与えるだけで。どうせすぐ消えるし。
-// なんか工夫欲しいけどね。
-
-// なんとか露光っていうのはあれ、シュプールの寿命をどんどん小さくするのと、
-// あとクリアをやめればいい。座標軸の更新とかも。
+// いいよこれで。
+// どうせどうでもいいコードでしょ
+// スライダー、0.1刻みで-10～10いじれるようにして。
 
 let spurPool;
 let system;
@@ -19,8 +13,8 @@ const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェ�
 
 function setup(){
   createCanvas(720, 480);
-  colorMode(HSB, 100);
-  spurPool = new ObjectPool(() => { return new spur(); }, 1024);
+  colorMode(HSB, 240);
+  spurPool = new ObjectPool(() => { return new spur(); }, 2048);
   system = new visualizeSystem();
   //background(0);
 }
@@ -36,11 +30,7 @@ function draw(){
   background(0);
   translate(240, 240);
   applyMatrix(1, 0, 0, -1, 0, 0);
-  // 白線で座標軸
-  stroke(0, 0, 100);
-  strokeWeight(1.0);
-  line(0, 240, 0, -240);
-  line(240, 0, -240, 0);
+  // 白線で座標軸 座標軸やめよう
   // spurを生成する（10fcごとにどこかにランダムで1個）
   system.update();
   system.createSpur();
@@ -48,7 +38,9 @@ function draw(){
   system.display();
   //translate(480, 0);
   // コンフィグ
+  system.drawConfig();
   //fill(0, 0, 100);
+  //stroke(0);
 	//text(spurPool.nextFreeSlot, 50, 50);
 }
 
@@ -58,11 +50,14 @@ class visualizeSystem{
   constructor(){
     this.unitArray = new CrossReferenceArray();
     this.spurArray = new CrossReferenceArray();
-    this.setUnitInterval = 10;
+    this.setUnitInterval = 3;
     this.properFrameCount = 0; // パターン変更の際にリセットする感じ？
-    this.elems = [2, 1.4, -0.6, 0.4]; // これを用いてbehaviorをセットする感じ
-    this.unitLifespan = 120;
+    this.elems = [0.1, 2.0, -2.0, 0.1]; // これを用いてbehaviorをセットする感じ
+    this.unitLifespan = 60;
     this.spurLifespan = 60;
+		this.pivotHue = 160; // 基準となる色
+    this.bandWidth = 40; // 色幅（この幅を行ったり来たりする）
+    this.diffHue = 0;
   }
   update(){
     this.properFrameCount++;
@@ -72,13 +67,17 @@ class visualizeSystem{
   }
   createUnit(){
     // ユニットを生成する
+    this.diffHue++;
+    if(this.diffHue > 2 * this.bandWidth){ this.diffHue -= 2 * this.bandWidth; }
+    let hue = (this.pivotHue + this.diffHue) % 240;
+    if(this.diffHue > this.bandWidth){ hue = (this.pivotHue + 2 * this.bandWidth - this.diffHue) % 240; }
     let x = (random(1) * 2 - 1) * 240;
     let y = (random(1) * 2 - 1) * 240;
     let toX = this.elems[0] * x + this.elems[1] * y;
     let toY = this.elems[2] * x + this.elems[3] * y;
     let vx = (toX - x) / this.unitLifespan;
     let vy = (toY - y) / this.unitLifespan;
-    let newUnit = new unit(0);
+    let newUnit = new unit(hue);
     newUnit.setPosition(x, y)
            .setVelocity(vx, vy)
            .setBehavior([timeLimitVanish(this.unitLifespan), fail]);
@@ -99,6 +98,17 @@ class visualizeSystem{
   }
   display(){
     this.spurArray.every("display");
+  }
+  drawConfig(){
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    fill(0, 0, 100);
+    stroke(0);
+    applyMatrix(1, 0, 0, -1, 0, 0);
+    text(this.elems[0].toFixed(1), 300, -180);
+    text(this.elems[1].toFixed(1), 380, -180);
+    text(this.elems[2].toFixed(1), 300, -100);
+    text(this.elems[3].toFixed(1), 380, -100);
   }
 }
 
@@ -161,7 +171,7 @@ class spur{
 		this.endY = prevPos.y;
 		this.hue = hue;
 		this.lifespanFrameCount = lifespanFrameCount;
-		this.coefficient = 100 / lifespanFrameCount;
+		this.coefficient = 240 / lifespanFrameCount;
 	}
 	remove(){
 		this.belongingArray.remove(this);
@@ -172,8 +182,9 @@ class spur{
 		if(this.lifespanFrameCount < 0){ this.remove(); }
 	}
 	display(){
-		strokeWeight(7);
-		stroke(this.hue, this.lifespanFrameCount * this.coefficient, 100, this.lifespanFrameCount * this.coefficient);
+		strokeWeight(3);
+    let saturation = 240 - this.lifespanFrameCount * this.coefficient
+		stroke(this.hue, saturation, 240, saturation);
 		line(this.startX, this.startY, this.endX, this.endY);
 	}
 }
