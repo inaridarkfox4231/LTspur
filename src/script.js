@@ -33,7 +33,7 @@ function preload(){
 function setup(){
   createCanvas(760, 480);
   colorMode(HSB, 240);
-  spurPool = new ObjectPool(() => { return new spur(); }, 2048);
+  spurPool = new ObjectPool(() => { return new spur(); }, 1024);
   system = new visualizeSystem();
   //background(0);
 }
@@ -49,11 +49,28 @@ function mousePressed(){
   system.elementControllerArray.forEach((eachSlider) => {
     if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
   })
+  system.colorControllerArray.forEach((eachSlider) => {
+    if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
+  })
 }
 
 function mouseReleased(){
-  system.elementControllerArray.every("inActivate");
-  system.elementUpdate();
+  let elementUpdateCheck = false;
+  system.elementControllerArray.forEach((eachSlider) => {
+    if(eachSlider.active){ elementUpdateCheck = true; }
+  })
+  if(elementUpdateCheck){
+    system.elementControllerArray.every("inActivate");
+    system.elementUpdate();
+  }
+  let colorBandUpdateCheck = false;
+  system.colorControllerArray.forEach((eachSlider) => {
+    if(eachSlider.active){ colorBandUpdateCheck = true; }
+  })
+  if(colorBandUpdateCheck){
+    system.colorControllerArray.every("inActivate");
+    system.colorBandUpdate();
+  }
 }
 
 function draw(){
@@ -68,9 +85,9 @@ function draw(){
   system.display();
   // コンフィグ
   system.drawConfig();
-  //fill(0, 0, 100);
-  //stroke(0);
-	//text(spurPool.nextFreeSlot, 50, 50);
+  fill(0, 0, 100);
+  stroke(0);
+	text(spurPool.nextFreeSlot, 50, 50);
   const end = performance.now();
   const timeStr = (end - start).toPrecision(4);
   let innerText = `${timeStr}ms`;
@@ -89,14 +106,15 @@ class visualizeSystem{
     this.elems = [1, 0, 0, 1]; // これを用いてbehaviorをセットする感じ
     this.unitLifespan = 60;
     this.spurLifespan = 60;
-		this.pivotHue = 160; // 基準となる色
-    this.bandWidth = 40; // 色幅（この幅を行ったり来たりする）
+		this.pivotHue = 0; // 基準となる色
+    this.bandWidth = 1; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
     this.elementControllerArray = new CrossReferenceArray();
-    this.prepareElementController();
+    this.colorControllerArray = new CrossReferenceArray();
+    this.prepareController();
     this.elementUpdate();
   }
-  prepareElementController(){
+  prepareController(){
     // 4本のスライダーを用意。横は？とりあえず-6～6(middleにする。short(2)とlong(10)は未実装).
     let slider11 = new HorizontalSlider(-6, 6, new CircleCursor(10), -80, 260, 500, -240);
     let slider12 = new HorizontalSlider(-6, 6, new CircleCursor(10), -40, 260, 500, -240);
@@ -112,6 +130,14 @@ class visualizeSystem{
     this.elementControllerArray.add(slider12);
     this.elementControllerArray.add(slider21);
     this.elementControllerArray.add(slider22);
+    let v1 = createVector(-10, -20);
+    let v2 = createVector(10, -20);
+    let v3 = createVector(-10, 20);
+    let v4 = createVector(10, 20);
+    let sliderUpper = new HorizontalSlider(0, 239, new TriangleCursor(v1, v2), 100, 260, 499, -240);
+    let sliderLower = new HorizontalSlider(0, 239, new TriangleCursor(v3, v4), 140, 260, 499, -240);
+    this.colorControllerArray.add(sliderUpper);
+    this.colorControllerArray.add(sliderLower);
   }
   update(){
     this.properFrameCount++;
@@ -119,6 +145,7 @@ class visualizeSystem{
     this.spurArray.every("update");
     this.unitArray.every("update");
     this.elementControllerArray.every("update");
+    this.colorControllerArray.every("update");
   }
   elementUpdate(){
     // 各種スライダーから値を取得してelementの値を更新する
@@ -126,11 +153,13 @@ class visualizeSystem{
       this.elems[i] = Math.floor(this.elementControllerArray[i].getValue() * 10) * 0.1;
     }
   }
-  colorBandUpdate(x1, x2){
-    // x1, x2のうち小さい方から大きい方、という風にいろいろいじる。
+  colorBandUpdate(){
+    let x0 = Math.floor(this.colorControllerArray[0].getValue());
+    let x1 = Math.floor(this.colorControllerArray[1].getValue());
+    // x0, x1のうち小さい方から大きい方、という風にいろいろいじる。
+    this.pivotHue = Math.min(x0, x1);
+    this.bandWidth = abs(x0 - x1) + 1;
     this.diffHue = 0;
-    this.pivotHue = Math.min(x1, x2);
-    this.bandWidth = abs(x1 - x2) + 1;
   }
   createUnit(){
     // ユニットを生成する
@@ -186,6 +215,7 @@ class visualizeSystem{
     line(260, 40, 500, 40);
     noStroke();
     this.elementControllerArray.every("display");
+    this.colorControllerArray.every("display");
   }
 }
 
