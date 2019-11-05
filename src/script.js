@@ -377,20 +377,95 @@ class Cursor{
 }
 
 class CircleCursor extends Cursor{
-  constructor(){
+  constructor(cursorRadius){
     super();
+    this.cursorRadius = cursorRadius;
+    this.offSetX = -cursorRadius;
+    this.offSetY = -cursorRadius;
+  }
+  hit(x, y, pivotVector){
+    return dist(x, y, pivotVector.x, pivotVector.y) < this.cursorRadius;
+  }
+  display(pivotVector, isActive){
+    // 画像貼り付けの場合
+    // let x = pivotVector.x + this.offSetX;
+    // let y = pivotVector.y + this.offSetY;
+    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
+    // image(this.cursorImg[imgPath], x, y);
+    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+    ellipse(pivotVector.x, pivotVector.y, this.radius, this.cursorRadius);
   }
 }
 
+// 横幅と縦幅
 class SquareCursor extends Cursor{
-  constructor(){
+  constructor(cursorWidth, cursorHeight){
     super();
+    this.cursorWidth = cursorWidth;
+    this.cursorHeight = cursorHeight;
+    this.offSetX = -cursorWidth / 2;
+    this.offSetY = -cursorHeight / 2;
+  }
+  hit(x, y, pivotVector){
+    return abs(x - pivotVector.x) < this.cursorWidth && abs(y - pivotvector.y) < this.cursorHeight;
+  }
+  display(pivotVector, isActive){
+    // 画像貼り付けの場合
+    // let x = pivotVector.x + this.offSetX;
+    // let y = pivotVector.y + this.offSetY;
+    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
+    // image(this.cursorImg[imgPath], x, y);
+    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+    rect(pivotVector.x + this.offSetX, pivotVector.y + this.offSetY, this.cursorWidth, this.cursorHeight);
   }
 }
 
+// 位置を示すベクトル2つ、といっても基本的には上下左右4パターンだけど。頂点がpivotに相当する。
+// hitがめんどくさい。
+// offSetはたとえばxならv1.x, v2.x, 0のうち小さい方。yも同様。これは画像貼り付けに使うデータで、
+// デフォルト三角形ならベクトル使うだけだから楽チン。
 class TriangleCursor extends Cursor{
-  constructor(){
+  constructor(v1, v2){
     super();
+    this.cursorV1 = v1;
+    this.cursorV2 = v2;
+    this.offSetX = Math.min(0, v1.x, v2.x);
+    this.offSetY = Math.min(0, v1.y, v2.y);
+    // 計算に使う値（vertex1, vertex2が一次独立だから）|v1|^2 * |v2|^2 - (v1・v2)^2 > 0.
+    let n1 = v1.magSq();
+    let n2 = v2.magSq();
+    let innerProd = p5.vector.dot(v1, v2);
+    this.dValue = n1 * n2 - innerProd * innerProd; // 正の数。
+    // まず|v2|^2 * v1と|v1|^2 * v2, さらに(v1・v2) * v2と(v1・v2) * v1を計算する。
+    let v3 = p5.Vector.mult(v1, n2);
+    let v4 = p5.Vector.mult(v2, n1);
+    let v5 = p5.Vector.mult(v2, innerProd);
+    let v6 = p5.Vector.mult(v1, innerProd);
+    // はじめのは|v2|^2 * v1 - (v1・v2) * v2. check1・v > 0が条件1.
+    this.checkVector1 = p5.vector.sub(v3, v5);
+    // 次のやつは|v1|^2 * v2 - (v1・v2) * v1. check2・v > 0が条件2.
+    this.checkVector2 = p5.Vector.sub(v4, v6);
+    // さいごにこの二つを足してcheck3とする。 check3・v < D が条件3.
+    this.checkVector3 = p5.Vector.add(checkVector1, checkVector2);
+  }
+  hit(x, y, pivotVector){
+    let check1 = (x - pivotVector.x) * this.checkVector1.x + (y - pivotVector.y) * this.checkVector1.y;
+    let check2 = (x - pivotVector.x) * this.checkVector2.x + (y - pivotVector.y) * this.checkVector2.y;
+    let check3 = (x - pivotVector.x) * this.checkVector3.x + (y - pivotVector.y) * this.checkVector3.y;
+    return check1 > 0 && check2 > 0 && check3 < this.dValue;
+  }
+  display(pivotVector, isActive){
+    // 画像貼り付けの場合
+    // let x = pivotVector.x + this.offSetX;
+    // let y = pivotVector.y + this.offSetY;
+    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
+    // image(this.cursorImg[imgPath], x, y);
+    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+    let x1 = pivotVector.x + this.cursorV1.x;
+    let y1 = pivotVector.y * this.cursorV1.y;
+    let x2 = pivotVector.x + this.cursorV2.x;
+    let y2 = pivotVector.y * this.cursorV2.y;
+    triangle(pivotVector.x, pivotVector.y, x1, y1, x2, y2);
   }
 }
 
