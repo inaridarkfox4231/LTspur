@@ -9,10 +9,20 @@ let spurPool;
 let system;
 let isLoop = true;
 
+let activeSliderImg;
+let inActiveSliderImg;
+let cursorImg;
+let colorBandImg;
+
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
+function preload(){
+  // スライダー2つと色設定用のカーソルと色バンド
+  // しばらくはダミー画像使ってください（色々めんどくさいので）
+}
+
 function setup(){
-  createCanvas(720, 480);
+  createCanvas(760, 480);
   colorMode(HSB, 240);
   spurPool = new ObjectPool(() => { return new spur(); }, 2048);
   system = new visualizeSystem();
@@ -36,7 +46,6 @@ function draw(){
   system.createSpur();
   system.act();
   system.display();
-  //translate(480, 0);
   // コンフィグ
   system.drawConfig();
   //fill(0, 0, 100);
@@ -102,7 +111,7 @@ class visualizeSystem{
   drawConfig(){
     textAlign(CENTER, CENTER);
     textSize(20);
-    fill(0, 0, 100);
+    fill(0, 0, 240);
     stroke(0);
     applyMatrix(1, 0, 0, -1, 0, 0);
     text(this.elems[0].toFixed(1), 300, -180);
@@ -183,7 +192,7 @@ class spur{
 	}
 	display(){
 		strokeWeight(3);
-    let saturation = 240 - this.lifespanFrameCount * this.coefficient
+    let saturation = this.lifespanFrameCount * this.coefficient;
 		stroke(this.hue, saturation, 240, saturation);
 		line(this.startX, this.startY, this.endX, this.endY);
 	}
@@ -244,6 +253,80 @@ class ObjectPool{
 	size(){
 		return this.objPool.length;
 	}
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Slider.
+// あくまでスライダーは上下もしくは左右に動くオブジェクトで動く範囲が制限されており、
+// なおかつ何かしらの値を返すものである。
+// 動かせるオブジェクトはカーソルと呼ばれて画像を貼り付ける。
+// とりあえずダミー。
+// hit(x, y)のxとyにmouseClickedのときのxとyを入れて調べてOKが出たらactivateされて
+// その間にマウスを動かすとカーソルが動いて値が変わる、
+// マウスを離すとinActivateされて更新が止まる。
+
+// 4つの要素に対応した4つと、色をいじる3角形が2つ（バンドを定める）
+// 4つは240個の・・うん。3と6と12を考えている。いじれるようにする。0.1刻みで変更可能。
+// -3～3, -6～6, -12～12. クリックで順繰りに。
+
+class slider{
+  constructor(typeName, minValue, maxValue, bodyPos, ltPos, rdPos, offSetX, offSetY){
+    this.typeName = typeName; // "vertical"（垂直）か"horizontal"（水平）。
+    this.minValue = minValue;
+    this.maxValue = maxValue;
+    this.bodyPos = bodyPos;
+    this.ltPos = ltPos; // 左上
+    this.rdPos = rdPos; // 右下
+    this.sliderPos = ltPos;
+    // activeのとき、横ならmouseX, 縦ならmouseYに応じて動く。あれが。
+    this.active = false;
+    // スライダーオブジェクトの位置と貼り付ける画像の左上との間のずれを修正する付加情報
+    this.offSetX = offSetX;
+    this.offSetY = offSetY;
+  }
+  hit(x, y){
+    // クリック位置がカーソルを・・・
+    if(this.typeName == "vertical"){ // たて
+      return dist(x, y, this.bodyPos, this.sliderPos) < 10;
+    }else if(this.typeName == "horizontal"){ // よこ
+      return dist(x, y, this.sliderPos, this.bodyPos) < 10;
+    }
+  }
+  activate(){
+    this.active = true;
+  }
+  inActivate(){
+    this.active = false;
+  }
+  setMinValue(newMinValue){
+    this.minValue = newMinValue; // min値の変更
+  }
+  setMaxValue(newMaxValue){
+    this.maxValue = newMaxValue; // maxの変更
+  }
+  update(){
+    if(this.active){
+      if(this.typeName == "vertical"){ // たて
+        this.sliderPos = constrain(mouseY, this.ltPos, this.rdPos);
+      }else if(this.typeName == "horizontal"){ // よこ
+        this.sliderPos = constrain(mouseX, this.ltPos, this.rdPos);
+      }
+    }
+  }
+  display(){
+    if(this.typeName == "vertical"){ // たて
+      (this.active ? fill(0, 240, 240) : fill(180, 240, 240));
+      noStroke();
+      ellipse(this.bodyPos, this.sliderPos, 40, 40);
+    }else if(this.typeName == "horizontal"){ // よこ
+      (this.active ? fill(0, 240, 240) : fill(180, 240, 240));
+      noStroke();
+      ellipse(this.sliderPos, this.bodyPos, 20, 20);
+    }
+  }
+  getValue(){
+    return map(this.sliderPos, this.ltPos, this.rdPos, this.minValue, this.maxValue);
+  }
 }
 
 // ---------------------------------------------------------------------------------------- //
