@@ -259,7 +259,8 @@ class ObjectPool{
 }
 
 // ---------------------------------------------------------------------------------------- //
-// Slider.
+// Slider and Cursor.
+
 // あくまでスライダーは上下もしくは左右に動くオブジェクトで動く範囲が制限されており、
 // なおかつ何かしらの値を返すものである。
 // 動かせるオブジェクトはカーソルと呼ばれて画像を貼り付ける。
@@ -280,6 +281,12 @@ class ObjectPool{
 // cursorを別クラスにしてコンポジットする。オブジェクトでもいいけど。クラスかなぁ。
 // hitとdisplayはcursorで、それ以外は・・
 // 三角形の場合は頂点、円の場合は中心がsliderPosに相当する感じ。
+
+// minとmaxのValueは逆でも普通に挙動する。大きいから小さい、でも充分OK.
+
+// cursorのcursorImgはdefault:trueの場合とそれ以外で分ける。デフォルトも便利なので（どうでもいい場合）。
+// setterでやればいいやんね。
+// setImgはスライダーにも用意してカーソルにアクセスできるようにする。
 
 class Slider{
   constructor(minValue, maxValue, cursor){
@@ -313,6 +320,9 @@ class Slider{
   display(){
     this.cursor.display(this.sliderPos, this.active); // 円とか三角形。activeで画像指定。
   }
+  setImg(nonActiveImg, activeImg){
+		this.cursor.setImg(nonActiveImg, activeImg);
+	}
   getValue(){ /* 継承先により異なる */ }
 }
 
@@ -340,14 +350,8 @@ class VerticalSlider extends Slider{
 
 // 横のスライダー、今回使うのはこっち（変化球ではない）
 class HorizontalSlider extends Slider{
-  constructor(minValue, maxValue, offSetX, offSetY, posY, left, right){
-    this.minValue = minValue;
-    this.maxValue = maxValue;
-    // activeのとき、横ならmouseX, 縦ならmouseYに応じて動く。あれが。
-    this.active = false;
-    // スライダーオブジェクトの位置と貼り付ける画像の左上との間のずれを修正する付加情報
-    this.offSetX = offSetX;
-    this.offSetY = offSetY;
+  constructor(minValue, maxValue, cursor, posY, left, right){
+    super(minValue, maxValue, cursor);
     // 位置関係
     this.posY = posY;
     this.left = left; // 左
@@ -371,9 +375,17 @@ class HorizontalSlider extends Slider{
 // 円形三角形四角形
 // activeとinActiveの画像を渡して共通の処理とするんだけど後でいいや。
 class Cursor{
-  constructor(){}
+  constructor(){
+    this.cursorImg = {};
+		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
+  }
   hit(x, y, pivotVector){ return false; }
   display(pivotVector, isActive){}
+  setImg(nonActiveImg, activeImg){
+    this.useOriginalImg = true;
+		this.cursorImg.nonActiveImg = nonActiveImg;
+		this.cursorImg.activeImg = activeImg;
+	}
 }
 
 class CircleCursor extends Cursor{
@@ -387,36 +399,44 @@ class CircleCursor extends Cursor{
     return dist(x, y, pivotVector.x, pivotVector.y) < this.cursorRadius;
   }
   display(pivotVector, isActive){
-    // 画像貼り付けの場合
-    // let x = pivotVector.x + this.offSetX;
-    // let y = pivotVector.y + this.offSetY;
-    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
-    // image(this.cursorImg[imgPath], x, y);
-    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
-    ellipse(pivotVector.x, pivotVector.y, this.radius, this.cursorRadius);
+		if(this.useOriginalImg){
+      // 画像貼り付けの場合
+      let x = pivotVector.x + this.offSetX;
+      let y = pivotVector.y + this.offSetY;
+      let imgPath = (isActive ? "activeImg" : "nonActiveImg");
+      image(this.cursorImg[imgPath], x, y);
+		}else{
+      // デフォルト
+      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      ellipse(pivotVector.x, pivotVector.y, this.cursorRadius * 2, this.cursorRadius * 2);
+		}
   }
 }
 
 // 横幅と縦幅
-class SquareCursor extends Cursor{
-  constructor(cursorWidth, cursorHeight){
+class RectCursor extends Cursor{
+  constructor(cursorHalfWidth, cursorHalfHeight){
     super();
-    this.cursorWidth = cursorWidth;
-    this.cursorHeight = cursorHeight;
-    this.offSetX = -cursorWidth / 2;
-    this.offSetY = -cursorHeight / 2;
+    this.cursorHalfWidth = cursorHalfWidth;
+    this.cursorHalfHeight = cursorHalfHeight;
+    this.offSetX = -cursorHalfWidth;
+    this.offSetY = -cursorHalfHeight;
   }
   hit(x, y, pivotVector){
-    return abs(x - pivotVector.x) < this.cursorWidth && abs(y - pivotvector.y) < this.cursorHeight;
+    return abs(x - pivotVector.x) < this.cursorHalfWidth && abs(y - pivotVector.y) < this.cursorHalfHeight;
   }
   display(pivotVector, isActive){
-    // 画像貼り付けの場合
-    // let x = pivotVector.x + this.offSetX;
-    // let y = pivotVector.y + this.offSetY;
-    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
-    // image(this.cursorImg[imgPath], x, y);
-    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
-    rect(pivotVector.x + this.offSetX, pivotVector.y + this.offSetY, this.cursorWidth, this.cursorHeight);
+		if(this.useOriginalImg){
+			// 画像貼り付けの場合
+      let x = pivotVector.x + this.offSetX;
+      let y = pivotVector.y + this.offSetY;
+      let imgPath = (isActive ? "activeImg" : "nonActiveImg");
+      image(this.cursorImg[imgPath], x, y);
+		}else{
+			// デフォルト
+      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      rect(pivotVector.x + this.offSetX, pivotVector.y + this.offSetY, this.cursorHalfWidth * 2, this.cursorHalfHeight * 2);
+		}
   }
 }
 
@@ -434,7 +454,7 @@ class TriangleCursor extends Cursor{
     // 計算に使う値（vertex1, vertex2が一次独立だから）|v1|^2 * |v2|^2 - (v1・v2)^2 > 0.
     let n1 = v1.magSq();
     let n2 = v2.magSq();
-    let innerProd = p5.vector.dot(v1, v2);
+    let innerProd = p5.Vector.dot(v1, v2);
     this.dValue = n1 * n2 - innerProd * innerProd; // 正の数。
     // まず|v2|^2 * v1と|v1|^2 * v2, さらに(v1・v2) * v2と(v1・v2) * v1を計算する。
     let v3 = p5.Vector.mult(v1, n2);
@@ -442,11 +462,11 @@ class TriangleCursor extends Cursor{
     let v5 = p5.Vector.mult(v2, innerProd);
     let v6 = p5.Vector.mult(v1, innerProd);
     // はじめのは|v2|^2 * v1 - (v1・v2) * v2. check1・v > 0が条件1.
-    this.checkVector1 = p5.vector.sub(v3, v5);
+    this.checkVector1 = p5.Vector.sub(v3, v5);
     // 次のやつは|v1|^2 * v2 - (v1・v2) * v1. check2・v > 0が条件2.
     this.checkVector2 = p5.Vector.sub(v4, v6);
     // さいごにこの二つを足してcheck3とする。 check3・v < D が条件3.
-    this.checkVector3 = p5.Vector.add(checkVector1, checkVector2);
+    this.checkVector3 = p5.Vector.add(this.checkVector1, this.checkVector2);
   }
   hit(x, y, pivotVector){
     let check1 = (x - pivotVector.x) * this.checkVector1.x + (y - pivotVector.y) * this.checkVector1.y;
@@ -455,17 +475,21 @@ class TriangleCursor extends Cursor{
     return check1 > 0 && check2 > 0 && check3 < this.dValue;
   }
   display(pivotVector, isActive){
-    // 画像貼り付けの場合
-    // let x = pivotVector.x + this.offSetX;
-    // let y = pivotVector.y + this.offSetY;
-    // let imgPath = (isActive ? "activeImg", "nonActiveImg");
-    // image(this.cursorImg[imgPath], x, y);
-    if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
-    let x1 = pivotVector.x + this.cursorV1.x;
-    let y1 = pivotVector.y * this.cursorV1.y;
-    let x2 = pivotVector.x + this.cursorV2.x;
-    let y2 = pivotVector.y * this.cursorV2.y;
-    triangle(pivotVector.x, pivotVector.y, x1, y1, x2, y2);
+		if(this.useOriginalImg){
+			// 画像貼り付けの場合
+      let x = pivotVector.x + this.offSetX;
+      let y = pivotVector.y + this.offSetY;
+      let imgPath = (isActive ? "activeImg" : "nonActiveImg");
+      image(this.cursorImg[imgPath], x, y);
+		}else{
+			// デフォルト
+      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      let x1 = pivotVector.x + this.cursorV1.x;
+      let y1 = pivotVector.y + this.cursorV1.y;
+      let x2 = pivotVector.x + this.cursorV2.x;
+      let y2 = pivotVector.y + this.cursorV2.y;
+      triangle(pivotVector.x, pivotVector.y, x1, y1, x2, y2);
+		}
   }
 }
 
