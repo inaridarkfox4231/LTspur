@@ -5,6 +5,9 @@
 // どうせどうでもいいコードでしょ
 // スライダー、0.1刻みで-10～10いじれるようにして。
 
+// applyMatrixやめる。計算で上下反転させればいいだけの話でしょ？？
+// てかもうこだわるのやめるか・・軸も無くしたし。逆だと思ってもらって。
+
 let spurPool;
 let system;
 let isLoop = true;
@@ -39,7 +42,6 @@ function keyTyped(){
 function draw(){
   background(0);
   translate(240, 240);
-  applyMatrix(1, 0, 0, -1, 0, 0);
   // 白線で座標軸 座標軸やめよう
   // spurを生成する（10fcごとにどこかにランダムで1個）
   system.update();
@@ -113,7 +115,6 @@ class visualizeSystem{
     textSize(20);
     fill(0, 0, 240);
     stroke(0);
-    applyMatrix(1, 0, 0, -1, 0, 0);
     text(this.elems[0].toFixed(1), 300, -180);
     text(this.elems[1].toFixed(1), 380, -180);
     text(this.elems[2].toFixed(1), 300, -100);
@@ -271,28 +272,23 @@ class ObjectPool{
 // 4つは240個の・・うん。3と6と12を考えている。いじれるようにする。0.1刻みで変更可能。
 // -3～3, -6～6, -12～12. クリックで順繰りに。
 
-class slider{
-  constructor(typeName, minValue, maxValue, bodyPos, ltPos, rdPos, offSetX, offSetY){
-    this.typeName = typeName; // "vertical"（垂直）か"horizontal"（水平）。
+// カーソルの当たり判定めんどくさいからsliderPos中心に半径10の円で決め打ちにしよう（めんどくさい）
+// 本音いうとverticalSliderとhorizontalSliderで別に作りたいんだよね・・・
+// といいつつ同じメソッド書きたくないんだよね・・
+// なんとかならないのーーー
+
+// cursorを別クラスにしてコンポジットする。オブジェクトでもいいけど。クラスかなぁ。
+// hitとdisplayはcursorで、それ以外は・・
+// 三角形の場合は頂点、円の場合は中心がsliderPosに相当する感じ。
+
+class Slider{
+  constructor(minValue, maxValue, cursor){
     this.minValue = minValue;
     this.maxValue = maxValue;
-    this.bodyPos = bodyPos;
-    this.ltPos = ltPos; // 左上
-    this.rdPos = rdPos; // 右下
-    this.sliderPos = ltPos;
-    // activeのとき、横ならmouseX, 縦ならmouseYに応じて動く。あれが。
+    // 円とか三角形とか。offSetは要らないかも。三角形はベクトルでやる。四角形はいわずもがな。
+    this.cursor = cursor;
+    // activeのとき、カーソルが動く
     this.active = false;
-    // スライダーオブジェクトの位置と貼り付ける画像の左上との間のずれを修正する付加情報
-    this.offSetX = offSetX;
-    this.offSetY = offSetY;
-  }
-  hit(x, y){
-    // クリック位置がカーソルを・・・
-    if(this.typeName == "vertical"){ // たて
-      return dist(x, y, this.bodyPos, this.sliderPos) < 10;
-    }else if(this.typeName == "horizontal"){ // よこ
-      return dist(x, y, this.sliderPos, this.bodyPos) < 10;
-    }
   }
   activate(){
     this.active = true;
@@ -306,28 +302,95 @@ class slider{
   setMaxValue(newMaxValue){
     this.maxValue = newMaxValue; // maxの変更
   }
+  getSliderPos(){
+    return {x:this.sliderPos.x, y:this.sliderPos.y};
+  }
+  hit(x, y){
+    // (x, y)がcursorの画像上かどうか判定する感じ
+    return this.cursor.hit(x, y, this.sliderPos);
+  }
+  update(){ /* 継承先により異なる */ }
+  display(){
+    this.cursor.display(this.sliderPos, this.active); // 円とか三角形。activeで画像指定。
+  }
+  getValue(){ /* 継承先により異なる */ }
+}
+
+// 縦のスライダー（ただし落ちない）
+class VerticalSlider extends Slider{
+  constructor(minValue, maxValue, cursor, posX, top, down){
+    super(minValue, maxValue, cursor);
+    // 位置関係
+    this.posX = posX;
+    this.top = top; // 上
+    this.down = down; // 下
+    this.sliderPos = createVector(posX, top);
+  }
   update(){
     if(this.active){
-      if(this.typeName == "vertical"){ // たて
-        this.sliderPos = constrain(mouseY, this.ltPos, this.rdPos);
-      }else if(this.typeName == "horizontal"){ // よこ
-        this.sliderPos = constrain(mouseX, this.ltPos, this.rdPos);
-      }
-    }
-  }
-  display(){
-    if(this.typeName == "vertical"){ // たて
-      (this.active ? fill(0, 240, 240) : fill(180, 240, 240));
-      noStroke();
-      ellipse(this.bodyPos, this.sliderPos, 40, 40);
-    }else if(this.typeName == "horizontal"){ // よこ
-      (this.active ? fill(0, 240, 240) : fill(180, 240, 240));
-      noStroke();
-      ellipse(this.sliderPos, this.bodyPos, 20, 20);
+      // 縦スライダー
+      this.sliderPos.set(this.posX, constrain(mouseY, this.top, this.down));
     }
   }
   getValue(){
-    return map(this.sliderPos, this.ltPos, this.rdPos, this.minValue, this.maxValue);
+    // 縦スライダー
+    return map(this.sliderPos.y, this.top, this.down, this.minValue, this.maxValue);
+  }
+}
+
+// 横のスライダー、今回使うのはこっち（変化球ではない）
+class HorizontalSlider extends Slider{
+  constructor(minValue, maxValue, offSetX, offSetY, posY, left, right){
+    this.minValue = minValue;
+    this.maxValue = maxValue;
+    // activeのとき、横ならmouseX, 縦ならmouseYに応じて動く。あれが。
+    this.active = false;
+    // スライダーオブジェクトの位置と貼り付ける画像の左上との間のずれを修正する付加情報
+    this.offSetX = offSetX;
+    this.offSetY = offSetY;
+    // 位置関係
+    this.posY = posY;
+    this.left = left; // 左
+    this.right = right; // 右
+    this.sliderPos = createVector(left, posY);
+  }
+  update(){
+    if(this.active){
+      // 横スライダー
+      this.sliderPos.set(constrain(mouseX, this.left, this.right), this.posY);
+    }
+  }
+  getValue(){
+    // 横スライダー
+    return map(this.sliderPos.x, this.left, this.right, this.minValue, this.maxValue);
+  }
+}
+
+// 斜めのスライダー（ありません）
+
+// 円形三角形四角形
+// activeとinActiveの画像を渡して共通の処理とするんだけど後でいいや。
+class Cursor{
+  constructor(){}
+  hit(x, y, pivotVector){ return false; }
+  display(pivotVector, isActive){}
+}
+
+class CircleCursor extends Cursor{
+  constructor(){
+    super();
+  }
+}
+
+class SquareCursor extends Cursor{
+  constructor(){
+    super();
+  }
+}
+
+class TriangleCursor extends Cursor{
+  constructor(){
+    super();
   }
 }
 
