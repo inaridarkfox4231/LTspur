@@ -81,38 +81,25 @@ function keyTyped(){
 
 // スライダーのカーソル移動に使う
 function mousePressed(){
+  // オフセットはtranslateがかかっているため。マウス位置に応じていずれかのスライダーをアップデート。
   system.controller.activate(-240, -240);
-  /*
-  system.elementControllerArray.forEach((eachSlider) => {
-    if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
-  })
-  system.colorControllerArray.forEach((eachSlider) => {
-    if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
-  })
-  */
 }
 
 // スライダーの値更新（いずれかのスライダーがアクティブな場合だけ）
 function mouseReleased(){
-  /*
-  let elementUpdateCheck = false;
-  system.elementControllerArray.forEach((eachSlider) => {
-    if(eachSlider.active){ elementUpdateCheck = true; }
-  })
-  if(elementUpdateCheck){
-    system.elementControllerArray.every("inActivate");
-    system.elementUpdate();
-  }
-  let colorBandUpdateCheck = false;
-  system.colorControllerArray.forEach((eachSlider) => {
-    if(eachSlider.active){ colorBandUpdateCheck = true; }
-  })
-  if(colorBandUpdateCheck){
-    system.colorControllerArray.every("inActivate");
-    system.colorBandUpdate();
-  }
-  */
+  // 単純にすべてのスライダーをactiveオフにする、ついでにキーリセット、自身もinActivate,など。
   system.controller.inActivate();
+}
+
+// 以下はタッチ用
+function touchStarted(){
+  system.controller.activate(-240, -240);
+  return false;
+}
+
+function touchEnded(){
+  system.controller.inActivate();
+  return false;
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -139,9 +126,8 @@ class visualizeSystem{
     this.spurArray = new CrossReferenceArray();
     this.setUnitInterval = 3;
     this.properFrameCount = 0; // パターン変更の際にリセットする感じ？
-    //this.elems = [0, 1, -1, 0]; // これを用いてbehaviorをセットする感じ
+    // 行列要素（behaviorを決めるため）
     this.tf = {"elem11":0, "elem12":1, "elem21":-1, "elem22":0}; // え？？
-    //this.elemStrings = ["0.0", "1.0", "-1.0", "0.0"]; // 画像表示用の文字列配列
     this.minUnitLifespan = 30; // ユニットの寿命の最小値
     this.maxUnitLifespan = 45; // ユニットの寿命の最大値
     this.minSpurLifespan = 30; // シュプールの寿命の最小値
@@ -149,15 +135,12 @@ class visualizeSystem{
 		this.pivotHue = 0; // 基準となる色
     this.bandWidth = 1; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
-    //this.elementControllerArray = new CrossReferenceArray();
-    //this.colorControllerArray = new CrossReferenceArray();
-    //this.prepareController();
-    //this.elementUpdate();
+    // スライダーのセットはコントローラというエイリアスを・・まあいいや
     this.controller = new SliderSet();
     this.prepareController();
   }
   prepareController(){
-    // 4本のスライダーを用意。横は？とりあえず-6～6(middleにする。short(2)とlong(10)は未実装).
+    // 行列要素をいじる4本のスライダーを用意。横は？とりあえず-6～6(middle)にする。
     let slider11 = new HorizontalSlider(-6, 6, new CircleCursor(10), -80, 260, 500, -240);
     let slider12 = new HorizontalSlider(-6, 6, new CircleCursor(10), -40, 260, 500, -240);
     let slider21 = new HorizontalSlider(-6, 6, new CircleCursor(10), 0, 260, 500, -240);
@@ -167,15 +150,13 @@ class visualizeSystem{
     slider12.setPosX(400);
     slider21.setPosX(360);
     slider22.setPosX(380);
-    // 登録
-    //this.elementControllerArray.add([slider11, slider12, slider21, slider22]);
+    // カラーバンドをいじる2本のスライダーを用意。0～239.
     let v1 = createVector(-10, -20);
     let v2 = createVector(10, -20);
     let v3 = createVector(-10, 20);
     let v4 = createVector(10, 20);
     let sliderUpper = new HorizontalSlider(0, 239, new TriangleCursor(v1, v2), 100, 260, 499, -240);
     let sliderLower = new HorizontalSlider(0, 239, new TriangleCursor(v3, v4), 140, 260, 499, -240);
-    //this.colorControllerArray.add([sliderUpper, sliderLower]);
     // 登録
     this.controller.regist([slider11, slider12, slider21, slider22, sliderUpper, sliderLower]);
     this.controller.registKeyMulti(["elem11", "elem12", "elem21", "elem22", "color1", "color2"]);
@@ -185,13 +166,8 @@ class visualizeSystem{
     this.properFrameCount++;
     this.unitArray.every("update");
     this.spurArray.every("update");
-    //this.elementControllerArray.every("update");
-    // ここでマウスが押されてる間だけ例の文字列の更新を行うようにすればいいかも
-    // ていうかこれもアクティブな時だけでいいじゃん・・mouseIsPressedだとタッチに対応できない。
-    //if(mouseIsPressed){ this.elemStringsUpdate(); }
-    //this.colorControllerArray.every("update");
     this.controller.update();
-    this.setControllerValue(); // コントローラーに変化があればupdate.
+    this.setControllerValue(); // コントローラーがactiveなら常にupdate.
   }
   setControllerValue(){
     if(!this.controller.active){ return; } // アクティブなスライダーが無い時。
@@ -211,28 +187,6 @@ class visualizeSystem{
       this.diffHue = 0;
     }
   }
-  /*
-  elementUpdate(){
-    // 各種スライダーから値を取得してelementの値を更新する
-    for(let i = 0; i < 4; i++){
-      this.elems[i] = Math.floor(this.elementControllerArray[i].getValue() * 10) * 0.1;
-    }
-  }
-  colorBandUpdate(){
-    let x0 = Math.floor(this.colorControllerArray[0].getValue());
-    let x1 = Math.floor(this.colorControllerArray[1].getValue());
-    // x0, x1のうち小さい方から大きい方、という風にいろいろいじる。
-    this.pivotHue = Math.min(x0, x1);
-    this.bandWidth = abs(x0 - x1) + 1;
-    this.diffHue = 0;
-  }
-  elemStringsUpdate(){
-    // 行列要素を文字列に変換（スライダーから値を取らないといけないので注意）
-    for(let i = 0; i < 4; i++){
-      this.elemStrings[i] = this.elementControllerArray[i].getValue().toFixed(1);
-    }
-  }
-  */
   createUnit(){
     // ユニットを生成する
     if(this.properFrameCount % this.setUnitInterval !== 0){ return; }
@@ -242,8 +196,6 @@ class visualizeSystem{
     if(this.diffHue > this.bandWidth){ hue = (this.pivotHue + 2 * this.bandWidth - this.diffHue) % 240; }
     let x = (random(1) * 2 - 1) * 240;
     let y = (random(1) * 2 - 1) * 240;
-    //let toX = this.elems[0] * x + this.elems[1] * y;
-    //let toY = this.elems[2] * x + this.elems[3] * y;
     // applyMatrixしなくても下記のようにすればy軸上方の一次変換を適用できる(計算は簡単)。
     let toX = this.tf.elem11 * x - this.tf.elem12 * y;
     let toY = -this.tf.elem21 * x + this.tf.elem22 * y;
@@ -292,8 +244,6 @@ class visualizeSystem{
     line(260, 40, 500, 40);
     noStroke();
     this.controller.display();
-    //this.elementControllerArray.every("display");
-    //this.colorControllerArray.every("display");
     image(colorBandImg, 260, 100);
   }
 }
@@ -678,15 +628,18 @@ class TriangleCursor extends Cursor{
 
 // ---------------------------------------------------------------------------------------- //
 // SliderSet.
-// 文字列の列["elem11", "elem12", "elem21", "elem22", "color1", "color2"]とか用意して、
-// sliderDict.elem11 = sliderArray[0]みたいにできたらいいんだけどね。
+// activateでマウス位置に応じて場合によってはいずれかのスライダーがactivateされて、
+// マウスを動かすとスライダーが動いて値が変化する。
+// マウスを離すとinActivateされて色々解除。
+// さらにキー登録機能により、キーを元に値を取得することが出来て、
+// 動かしたい変数をバインドさせることで特定のプロパティと連動して変化させることができる。
 
 class SliderSet{
 	constructor(){
 		this.sliderArray = new CrossReferenceArray();
 		this.sliderDict = {};
 		this.activeSliderKey = "";
-    this.active = false;
+    this.active = false; // activeなスライダーがあるかどうか
 	}
 	regist(slider){
 		// sliderは複数のスライダーからなる配列でもOK.
@@ -695,7 +648,7 @@ class SliderSet{
 	registKeyMulti(keyArray){
 		for(let i = 0; i < this.sliderArray.length; i++){
 			this.sliderDict[keyArray[i]] = this.sliderArray[i];
-			this.sliderArray[i].key = keyArray[i];
+			this.sliderArray[i].key = keyArray[i]; // スライダーにキーを登録する
 		}
 	}
 	getValueByIndex(index){
@@ -711,13 +664,13 @@ class SliderSet{
 	display(){
 		this.sliderArray.every("display");
 	}
-	activate(offSetX, offSetY){
+	activate(offSetX = 0, offSetY = 0){
 		// マウス位置がヒットしたらactivate. ひとつまで。
 		this.sliderArray.forEach((eachSlider) => {
 			if(eachSlider.hit(mouseX + offSetX, mouseY + offSetY)){
 				eachSlider.activate();
         this.active = true;
-				this.activeSliderKey = eachSlider.key; // activeなスライダーのキーをセット
+				this.activeSliderKey = eachSlider.key; // activeなスライダーのキーをセット（これの為にキーを登録した）
 				return;
 			}
 		})
