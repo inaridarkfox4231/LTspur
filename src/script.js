@@ -26,6 +26,9 @@ let isLoop = true; // ループ、Pキーで切り替え
 let showInfo = false; // パフォーマンス表示、Iキーで切り替え
 
 let colorBandImg;
+let linearModeImg;
+let dynamicModeImg;
+let modeImg;
 
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 const headAddress = "https://inaridarkfox4231.github.io/LTspurAssets/";
@@ -33,7 +36,11 @@ const headAddress = "https://inaridarkfox4231.github.io/LTspurAssets/";
 function preload(){
   // 最後に画像をクラウドから取り寄せる処理書きたいかな・・（カラーバンドの所がいちいち面倒）
   colorBandImg = loadImage(headAddress + "colorBand.png"); // github用
+  linearModeImg = loadImage(headAddress + "linear.png");
+  dynamicModeImg = loadImage(headAddress + "dynamic.png");
   //colorBandImg = loadImage("colorBand.png"); // OpenProcessing用
+  //linearModeImg = loadImage("linear.png");
+  //dynamicModeImg = loadImage("dynamic.png");
 }
 
 // 余白280の使い方。
@@ -45,6 +52,7 @@ function preload(){
 function setup(){
   createCanvas(760, 480);
   colorMode(HSB, 240);
+  modeImg = {"linear":linearModeImg, "dynamic":dynamicModeImg};
   spurPool = new ObjectPool(() => { return new spur(); }, 1024);
   system = new visualizeSystem();
 }
@@ -102,6 +110,15 @@ function touchEnded(){
   return false;
 }
 
+// モードチェンジ（該当箇所をクリック）
+function mouseClicked(){
+  if(540 < mouseX && mouseX < 700 && 410 < mouseY && mouseY < 450){
+    if(system.mode === "linear"){ system.mode = "dynamic"; return; }
+    else{ system.mode = "linear"; return; }
+  }
+  return;
+}
+
 // ---------------------------------------------------------------------------------------- //
 // performance infomation.
 
@@ -135,7 +152,7 @@ class visualizeSystem{
 		this.pivotHue = 0; // 基準となる色
     this.bandWidth = 1; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
-    this.behaviorType = "dynamic"; // これをいじれないかな。
+    this.mode = "linear"; // これをいじれないかな。
     // スライダーのセットはコントローラというエイリアスを・・まあいいや
     this.controller = new SliderSet();
     this.prepareController();
@@ -210,7 +227,7 @@ class visualizeSystem{
     this.unitArray.add(newUnit);
   }
   setUnitBehavior(newUnit, x, y, lifespan){
-    if(this.behaviorType === "linear"){
+    if(this.mode === "linear"){
       // linearは(x, y)を一次変換で移した位置までまっすぐに進むパターン
       // applyMatrix(1, 0, 0, -1, 0, 0)はややこしいので使わない
       const toX = this.tf.elem11 * x - this.tf.elem12 * y;
@@ -219,7 +236,7 @@ class visualizeSystem{
       const vy = (toY - y) / lifespan;
       newUnit.setVelocity(vx, vy)
              .setBehavior([timeLimitVanish(lifespan), fail]);
-    }else if(this.behaviorType === "dynamic"){
+    }else if(this.mode === "dynamic"){
       // dynamicは力学系、(x, y)に基づいた速度を常に与えられ続けながらユニットが移動するパターン
       const dynamicBehavior = dynamicSystem(this.tf.elem11, -this.tf.elem12, -this.tf.elem21, this.tf.elem22, 0.05);
       newUnit.setVelocity(0, 0)
@@ -260,6 +277,8 @@ class visualizeSystem{
     noStroke();
     this.controller.display();
     image(colorBandImg, 260, 100);
+    // モード切替パネル（クリックで変更）
+    image(modeImg[this.mode], 300, 170);
   }
 }
 
