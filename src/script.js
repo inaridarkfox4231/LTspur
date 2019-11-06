@@ -1,12 +1,7 @@
 // 仕様
 // 720x480
 
-// いいよこれで。
-// どうせどうでもいいコードでしょ
-// スライダー、0.1刻みで-10～10いじれるようにして。
-
-// applyMatrixやめる。計算で上下反転させればいいだけの話でしょ？？
-// てかもうこだわるのやめるか・・軸も無くしたし。逆だと思ってもらって。
+// applyMatrixやめる。計算で上下反転させればいいだけの話。
 
 let spurPool;
 let system;
@@ -19,7 +14,7 @@ const headAddress = "https://inaridarkfox4231.github.io/LTspurAssets/";
 
 function preload(){
   // 最後に画像をクラウドから取り寄せる処理書きたいかな・・（カラーバンドの所がいちいち面倒）
-  colorBandImg = loadImage(headAddress + "colorBand.png");
+  colorBandImg = loadImage(headAddress + "colorBand.png"); // github用
   //colorBandImg = loadImage("colorBand.png"); // OpenProcessing用
 }
 
@@ -34,7 +29,6 @@ function setup(){
   colorMode(HSB, 240);
   spurPool = new ObjectPool(() => { return new spur(); }, 1024);
   system = new visualizeSystem();
-  //background(0);
 }
 
 function keyTyped(){
@@ -76,10 +70,10 @@ function draw(){
 	const start = performance.now(); // 時間表示。
   background(0);
   translate(240, 240);
-  // 白線で座標軸 座標軸やめよう
-  // spurを生成する（10fcごとにどこかにランダムで1個）
-  system.update();
+  // 座標軸を廃止
+  system.createUnit();
   system.createSpur();
+  system.update();
   system.act();
   system.display();
   // コンフィグ
@@ -138,10 +132,10 @@ class visualizeSystem{
     this.colorControllerArray.add([sliderUpper, sliderLower]);
   }
   update(){
+    // 各種update.
     this.properFrameCount++;
-    if(this.properFrameCount % this.setUnitInterval === 0){ this.createUnit(); }
-    this.spurArray.every("update");
     this.unitArray.every("update");
+    this.spurArray.every("update");
     this.elementControllerArray.every("update");
     // ここでマウスが押されてる間だけ例の文字列の更新を行うようにすればいいかも
     if(mouseIsPressed){ this.elemStringsUpdate(); }
@@ -169,6 +163,7 @@ class visualizeSystem{
   }
   createUnit(){
     // ユニットを生成する
+    if(this.properFrameCount % this.setUnitInterval !== 0){ return; }
     this.diffHue++;
     if(this.diffHue > 2 * this.bandWidth){ this.diffHue -= 2 * this.bandWidth; }
     let hue = (this.pivotHue + this.diffHue) % 240;
@@ -244,6 +239,7 @@ class unit{
     this.spurWeight = random(3, 6);
 	}
 	setPosition(x, y){
+    this.prevPosition.set(x, y); // デフォがないとダメ。
 		this.position.set(x, y);
 		return this;
 	}
