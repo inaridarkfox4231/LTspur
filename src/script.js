@@ -5,7 +5,8 @@
 
 let spurPool;
 let system;
-let isLoop = true;
+let isLoop = true; // ループ、Pキーで切り替え
+let showInfo = false; // パフォーマンス表示、Iキーで切り替え
 
 let colorBandImg;
 
@@ -31,13 +32,37 @@ function setup(){
   system = new visualizeSystem();
 }
 
+function draw(){
+	const start = performance.now(); // 時間表示。
+  background(0);
+  translate(240, 240);
+  // 座標軸を廃止
+  system.createUnit();
+  system.createSpur();
+  system.update();
+  system.act();
+  system.display();
+  // コンフィグ
+  system.drawConfig();
+  // パフォーマンスインフォメーション
+	if(showInfo){ showPerformanceInfo(start); }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// interaction.
+
+// Pキーでポーズ、Iキーでインフォメーション表示
 function keyTyped(){
   if(key === 'p'){
     if(isLoop){ noLoop(); isLoop = false; return; }
     else{ loop(); isLoop = true; return; }
+  }else if(key === 'i'){
+    if(showInfo){ showInfo = false; return; }
+    else{ showInfo = true; return; }
   }
 }
 
+// スライダーのカーソル移動に使う
 function mousePressed(){
   system.elementControllerArray.forEach((eachSlider) => {
     if(eachSlider.hit(mouseX - 240, mouseY - 240)){ eachSlider.activate(); }
@@ -47,6 +72,7 @@ function mousePressed(){
   })
 }
 
+// スライダーの値更新（いずれかのスライダーがアクティブな場合だけ）
 function mouseReleased(){
   let elementUpdateCheck = false;
   system.elementControllerArray.forEach((eachSlider) => {
@@ -66,30 +92,24 @@ function mouseReleased(){
   }
 }
 
-function draw(){
-	const start = performance.now(); // 時間表示。
-  background(0);
-  translate(240, 240);
-  // 座標軸を廃止
-  system.createUnit();
-  system.createSpur();
-  system.update();
-  system.act();
-  system.display();
-  // コンフィグ
-  system.drawConfig();
-  fill(0, 0, 100);
-  stroke(0);
-	text(spurPool.nextFreeSlot, 50, 50);
-  const end = performance.now();
-  const timeStr = (end - start).toPrecision(4);
-  let innerText = `${timeStr}ms`;
-  fill(0, 0, 240);
-  text(innerText, 0, 100);
+// ---------------------------------------------------------------------------------------- //
+// performance infomation.
+
+function showPerformanceInfo(startTime){
+    fill(0, 0, 240);
+    stroke(0);
+	  textAlign(LEFT);
+	  text("usingSpurCount:" + spurPool.nextFreeSlot, -100, 50);
+    const end = performance.now();
+    const timeStr = (end - startTime).toPrecision(4);
+    let innerText = `${timeStr}ms`;
+    fill(0, 0, 240);
+    text("runTime:" + innerText, -100, 100);
 }
 
 // ---------------------------------------------------------------------------------------- //
 // visualize system.
+
 class visualizeSystem{
   constructor(){
     this.unitArray = new CrossReferenceArray();
