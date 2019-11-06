@@ -12,15 +12,15 @@ let spurPool;
 let system;
 let isLoop = true;
 
-let activeSliderImg;
-let inActiveSliderImg;
-let cursorImg;
 let colorBandImg;
 
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
+const headAddress = "https://inaridarkfox4231.github.io/LTspurAssets/";
 
 function preload(){
   // 最後に画像をクラウドから取り寄せる処理書きたいかな・・（カラーバンドの所がいちいち面倒）
+  colorBandImg = loadImage(headAddress + "colorBand.png");
+  //colorBandImg = loadImage("colorBand.png"); // OpenProcessing用
 }
 
 // 余白280の使い方。
@@ -213,10 +213,6 @@ class visualizeSystem{
     textSize(20);
     fill(0, 0, 240);
     stroke(0);
-    //text(this.elementControllerArray[0].getValue().toFixed(1), 340, -200);
-    //text(this.elementControllerArray[1].getValue().toFixed(1), 420, -200);
-    //text(this.elementControllerArray[2].getValue().toFixed(1), 340, -140);
-    //text(this.elementControllerArray[3].getValue().toFixed(1), 420, -140);
     text(this.elemStrings[0], 340, -200);
     text(this.elemStrings[1], 420, -200);
     text(this.elemStrings[2], 340, -140);
@@ -230,6 +226,7 @@ class visualizeSystem{
     noStroke();
     this.elementControllerArray.every("display");
     this.colorControllerArray.every("display");
+    image(colorBandImg, 260, 100);
   }
 }
 
