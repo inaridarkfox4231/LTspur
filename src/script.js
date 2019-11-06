@@ -101,11 +101,13 @@ class visualizeSystem{
   constructor(){
     this.unitArray = new CrossReferenceArray();
     this.spurArray = new CrossReferenceArray();
-    this.setUnitInterval = 6;
+    this.setUnitInterval = 3;
     this.properFrameCount = 0; // パターン変更の際にリセットする感じ？
     this.elems = [1, 0, 0, 1]; // これを用いてbehaviorをセットする感じ
-    this.unitLifespan = 60;
-    this.spurLifespan = 60;
+    this.minUnitLifespan = 30; // ユニットの寿命の最小値
+    this.maxUnitLifespan = 45; // ユニットの寿命の最大値
+    this.minSpurLifespan = 30; // シュプールの寿命の最小値
+    this.maxSpurLifespan = 45; // シュプールの寿命の最大値
 		this.pivotHue = 0; // 基準となる色
     this.bandWidth = 1; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
@@ -126,18 +128,14 @@ class visualizeSystem{
     slider21.setPosX(360);
     slider22.setPosX(380);
     // 登録
-    this.elementControllerArray.add(slider11);
-    this.elementControllerArray.add(slider12);
-    this.elementControllerArray.add(slider21);
-    this.elementControllerArray.add(slider22);
+    this.elementControllerArray.add([slider11, slider12, slider21, slider22]);
     let v1 = createVector(-10, -20);
     let v2 = createVector(10, -20);
     let v3 = createVector(-10, 20);
     let v4 = createVector(10, 20);
     let sliderUpper = new HorizontalSlider(0, 239, new TriangleCursor(v1, v2), 100, 260, 499, -240);
     let sliderLower = new HorizontalSlider(0, 239, new TriangleCursor(v3, v4), 140, 260, 499, -240);
-    this.colorControllerArray.add(sliderUpper);
-    this.colorControllerArray.add(sliderLower);
+    this.colorControllerArray.add([sliderUpper, sliderLower]);
   }
   update(){
     this.properFrameCount++;
@@ -145,6 +143,7 @@ class visualizeSystem{
     this.spurArray.every("update");
     this.unitArray.every("update");
     this.elementControllerArray.every("update");
+    // ここでマウスが押されてる間だけ例の文字列の更新を行うようにすればいいかも
     this.colorControllerArray.every("update");
   }
   elementUpdate(){
@@ -174,12 +173,16 @@ class visualizeSystem{
     // applyMatrixしなくても下記のようにすればy軸上方の一次変換を適用できる(計算は簡単)。
     let toX = this.elems[0] * x - this.elems[1] * y;
     let toY = -this.elems[2] * x + this.elems[3] * y;
-    let vx = (toX - x) / this.unitLifespan;
-    let vy = (toY - y) / this.unitLifespan;
+    // 寿命に幅を持たせる（ユニットとシュプール両方）
+    let unitLifespan = Math.floor(random(this.minUnitLifespan, this.maxUnitLifespan));
+    let spurLifespan = Math.floor(random(this.minSpurLifespan, this.maxSpurLifespan));
+    let vx = (toX - x) / unitLifespan;
+    let vy = (toY - y) / unitLifespan;
     let newUnit = new unit(hue);
     newUnit.setPosition(x, y)
            .setVelocity(vx, vy)
-           .setBehavior([timeLimitVanish(this.unitLifespan), fail]);
+           .setBehavior([timeLimitVanish(unitLifespan), fail])
+           .setSpurLifespan(spurLifespan);
     this.unitArray.add(newUnit);
   }
   createSpur(){
@@ -187,7 +190,7 @@ class visualizeSystem{
     this.unitArray.forEach(
       (u) => {
         let newSpur = spurPool.use();
-    		newSpur.setting(u.position, u.prevPosition, u.hue, this.spurLifespan, u.spurWeight);
+    		newSpur.setting(u.position, u.prevPosition, u.hue, u.spurLifespan, u.spurWeight);
     		this.spurArray.add(newSpur);
       }
     )
@@ -607,8 +610,16 @@ class CrossReferenceArray extends Array{
     super();
 	}
   add(element){
-    this.push(element);
-    element.belongingArray = this; // 所属配列への参照
+    if(element.length === undefined){
+      this.push(element);
+      element.belongingArray = this; // 所属配列への参照
+    }else{
+      for(let i = 0; i < element.length; i++){
+        let e = element[i];
+        this.push(e);
+        e.belongingArray = this; // 複数の場合
+      }
+    }
   }
   remove(element){
     let index = this.indexOf(element, 0);
