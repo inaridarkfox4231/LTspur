@@ -20,8 +20,7 @@ let colorBandImg;
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
 function preload(){
-  // スライダー2つと色設定用のカーソルと色バンド
-  // しばらくはダミー画像使ってください（色々めんどくさいので）
+  // 最後に画像をクラウドから取り寄せる処理書きたいかな・・（カラーバンドの所がいちいち面倒）
 }
 
 // 余白280の使い方。
