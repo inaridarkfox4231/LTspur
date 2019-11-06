@@ -1,6 +1,16 @@
 // 仕様
 // 720x480
 
+// 変更案
+// 1. グローバル変数を分かりやすいようにgl_みたいの付けてグローバル汚染しにくくする（特にクラス以外の変数）
+// 今のところはいいかな・・画像とか全体とかだけだし・・
+// 2. タッチでも動くようにするとか
+// 3. スライダーの集合をクラス化してみるとか？CrossReferenceArrayやメソッドなどを分離したい。
+// 値の取得も辞書にして取得できるようにするとか。んー。インデックスでもいいけども。
+
+// 汎用コードでやりたいのよ。
+// あとクラス名をアッパーキャメルで統一したいかも。
+
 // applyMatrixやめる。計算で上下反転させればいいだけの話。
 
 let spurPool;
@@ -433,9 +443,6 @@ class Slider{
   setMaxValue(newMaxValue){
     this.maxValue = newMaxValue; // maxの変更
   }
-  getSliderPos(){
-    return {x:this.sliderPos.x, y:this.sliderPos.y};
-  }
   hit(x, y){
     // (x, y)がcursorの画像上かどうか判定する感じ
     return this.cursor.hit(x, y, this.sliderPos);
@@ -502,9 +509,10 @@ class HorizontalSlider extends Slider{
   }
 }
 
-// 斜めのスライダー（ありません）
+// 円形スライダー（？）
 
-// 円形三角形四角形
+// カーソル
+// 円、四角、三角。
 // activeとinActiveの画像を渡して共通の処理とするんだけど後でいいや。
 class Cursor{
   constructor(){
@@ -623,6 +631,49 @@ class TriangleCursor extends Cursor{
       triangle(pivotVector.x, pivotVector.y, x1, y1, x2, y2);
 		}
   }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// SliderSet.
+// 文字列の列["elem11", "elem12", "elem21", "elem22", "color1", "color2"]とか用意して、
+// sliderDict.elem11 = sliderArray[0]みたいにできたらいいんだけどね。
+
+class SliderSet{
+	constructor(){
+		this.sliderArray = new CrossReferenceArray();
+		this.sliderDict = {};
+	}
+	regist(slider){
+		// sliderは複数のスライダーからなる配列でもOK.
+		this.sliderArray.add(slider);
+	}
+	registKeyMulti(keyArray){
+		for(let i = 0; i < this.sliderArray.length; i++){
+			this.sliderDict[keyArray[i]] = this.sliderArray[i];
+		}
+	}
+	getValueByIndex(index){
+		return this.sliderArray[index].getValue();
+	}
+	getValueByKey(key){
+		// 可読性のためにキーでも取得できるようにする・・必要かどうかわからんけど。
+		return this.sliderDict[key].getValue();
+	}
+	update(){
+		this.sliderArray.every("update");
+	}
+	display(){
+		this.sliderArray.every("display");
+	}
+	activate(offSetX, offSetY){
+		// マウス位置がヒットしたらactivate. ひとつまで。
+		this.sliderArray.forEach((eachSlider) => {
+			if(eachSlider.hit(mouseX - offSetX, mouseY - offSetY)){ eachSlider.activate(); return; }
+		})
+	}
+	inActivate(){
+		this.sliderArray.every("inActivate");
+	}
 }
 
 // ---------------------------------------------------------------------------------------- //
