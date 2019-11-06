@@ -112,7 +112,7 @@ function showPerformanceInfo(startTime){
 	  text("usingSpurCount:" + spurPool.nextFreeSlot, -100, 50);
     const end = performance.now();
     const timeStr = (end - startTime).toPrecision(4);
-    let innerText = `${timeStr}ms`;
+    const innerText = `${timeStr}ms`;
     fill(0, 0, 240);
     text("runTime:" + innerText, -100, 100);
 }
@@ -135,6 +135,7 @@ class visualizeSystem{
 		this.pivotHue = 0; // 基準となる色
     this.bandWidth = 1; // 色幅（この幅を行ったり来たりする）
     this.diffHue = 0;
+    this.behaviorType = "dynamic"; // これをいじれないかな。
     // スライダーのセットはコントローラというエイリアスを・・まあいいや
     this.controller = new SliderSet();
     this.prepareController();
@@ -151,10 +152,10 @@ class visualizeSystem{
     slider21.setPosX(360);
     slider22.setPosX(380);
     // カラーバンドをいじる2本のスライダーを用意。0～239.
-    let v1 = createVector(-10, -20);
-    let v2 = createVector(10, -20);
-    let v3 = createVector(-10, 20);
-    let v4 = createVector(10, 20);
+    const v1 = createVector(-10, -20);
+    const v2 = createVector(10, -20);
+    const v3 = createVector(-10, 20);
+    const v4 = createVector(10, 20);
     let sliderUpper = new HorizontalSlider(0, 239, new TriangleCursor(v1, v2), 100, 260, 499, -240);
     let sliderLower = new HorizontalSlider(0, 239, new TriangleCursor(v3, v4), 140, 260, 499, -240);
     // 登録
@@ -180,8 +181,8 @@ class visualizeSystem{
       this.tf[key] = Math.floor(this.controller.getValueByKey(key) * 10) * 0.1;
     }else if(["color1", "color2"].indexOf(key, 0) >= 0){
       // カラーバンドの変更
-      let c1 = this.controller.getValueByKey("color1");
-      let c2 = this.controller.getValueByKey("color2");
+      const c1 = this.controller.getValueByKey("color1");
+      const c2 = this.controller.getValueByKey("color2");
       this.pivotHue = Math.min(c1, c2);
       this.bandWidth = abs(c2 - c1) + 1;
       this.diffHue = 0;
@@ -194,22 +195,36 @@ class visualizeSystem{
     if(this.diffHue > 2 * this.bandWidth){ this.diffHue -= 2 * this.bandWidth; }
     let hue = (this.pivotHue + this.diffHue) % 240;
     if(this.diffHue > this.bandWidth){ hue = (this.pivotHue + 2 * this.bandWidth - this.diffHue) % 240; }
+    // ユニットを用意
+    let newUnit = new unit(hue);
+    // 位置を決める
     let x = (random(1) * 2 - 1) * 240;
     let y = (random(1) * 2 - 1) * 240;
-    // applyMatrixしなくても下記のようにすればy軸上方の一次変換を適用できる(計算は簡単)。
-    let toX = this.tf.elem11 * x - this.tf.elem12 * y;
-    let toY = -this.tf.elem21 * x + this.tf.elem22 * y;
+    newUnit.setPosition(x, y);
     // 寿命に幅を持たせる（ユニットとシュプール両方）
     let unitLifespan = Math.floor(random(this.minUnitLifespan, this.maxUnitLifespan));
     let spurLifespan = Math.floor(random(this.minSpurLifespan, this.maxSpurLifespan));
-    let vx = (toX - x) / unitLifespan;
-    let vy = (toY - y) / unitLifespan;
-    let newUnit = new unit(hue);
-    newUnit.setPosition(x, y)
-           .setVelocity(vx, vy)
-           .setBehavior([timeLimitVanish(unitLifespan), fail])
-           .setSpurLifespan(spurLifespan);
+    newUnit.setSpurLifespan(spurLifespan);
+    // 各種パターンに応じてユニットの動き方を決める
+    this.setUnitBehavior(newUnit, x, y, unitLifespan);
     this.unitArray.add(newUnit);
+  }
+  setUnitBehavior(newUnit, x, y, lifespan){
+    if(this.behaviorType === "linear"){
+      // linearは(x, y)を一次変換で移した位置までまっすぐに進むパターン
+      // applyMatrix(1, 0, 0, -1, 0, 0)はややこしいので使わない
+      const toX = this.tf.elem11 * x - this.tf.elem12 * y;
+      const toY = -this.tf.elem21 * x + this.tf.elem22 * y;
+      const vx = (toX - x) / lifespan;
+      const vy = (toY - y) / lifespan;
+      newUnit.setVelocity(vx, vy)
+             .setBehavior([timeLimitVanish(lifespan), fail]);
+    }else if(this.behaviorType === "dynamic"){
+      // dynamicは力学系、(x, y)に基づいた速度を常に与えられ続けながらユニットが移動するパターン
+      const dynamicBehavior = dynamicSystem(this.tf.elem11, -this.tf.elem12, -this.tf.elem21, this.tf.elem22, 0.05);
+      newUnit.setVelocity(0, 0)
+             .setBehavior([dynamicBehavior, timeLimitVanish(lifespan), fail]);
+    }
   }
   createSpur(){
     // シュプールを生成する
@@ -322,7 +337,7 @@ class spur{
 	}
 	display(){
 		strokeWeight(this.weight);
-    let saturation = this.lifespanFrameCount * this.coefficient;
+    const saturation = this.lifespanFrameCount * this.coefficient;
 		stroke(this.hue, saturation, 240, saturation);
 		line(this.startX, this.startY, this.endX, this.endY);
 	}
@@ -723,4 +738,14 @@ function timeLimitVanish(limit){
 // 画面外で消滅
 function fail(obj){
 	if(obj.position.x < -240 || obj.position.x > 240 || obj.position.y < -240 || obj.position.y > 240){ obj.remove(); }
+}
+
+// 新しく追加したい。微分方程式のやつとかどう？
+// 速度が毎フレーム変化するの。
+function dynamicSystem(a, b, c, d, diff){
+  return (obj) => {
+    const vx = diff * (a * obj.position.x + b * obj.position.y);
+    const vy = diff * (c * obj.position.x + d * obj.position.y);
+    obj.setVelocity(vx, vy);
+  }
 }
