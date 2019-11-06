@@ -103,7 +103,8 @@ class visualizeSystem{
     this.spurArray = new CrossReferenceArray();
     this.setUnitInterval = 3;
     this.properFrameCount = 0; // パターン変更の際にリセットする感じ？
-    this.elems = [1, 0, 0, 1]; // これを用いてbehaviorをセットする感じ
+    this.elems = [0, 1, -1, 0]; // これを用いてbehaviorをセットする感じ
+    this.elemStrings = ["0.0", "1.0", "-1.0", "0.0"]; // 画像表示用の文字列配列
     this.minUnitLifespan = 30; // ユニットの寿命の最小値
     this.maxUnitLifespan = 45; // ユニットの寿命の最大値
     this.minSpurLifespan = 30; // シュプールの寿命の最小値
@@ -144,6 +145,7 @@ class visualizeSystem{
     this.unitArray.every("update");
     this.elementControllerArray.every("update");
     // ここでマウスが押されてる間だけ例の文字列の更新を行うようにすればいいかも
+    if(mouseIsPressed){ this.elemStringsUpdate(); }
     this.colorControllerArray.every("update");
   }
   elementUpdate(){
@@ -159,6 +161,12 @@ class visualizeSystem{
     this.pivotHue = Math.min(x0, x1);
     this.bandWidth = abs(x0 - x1) + 1;
     this.diffHue = 0;
+  }
+  elemStringsUpdate(){
+    // 行列要素を文字列に変換（スライダーから値を取らないといけないので注意）
+    for(let i = 0; i < 4; i++){
+      this.elemStrings[i] = this.elementControllerArray[i].getValue().toFixed(1);
+    }
   }
   createUnit(){
     // ユニットを生成する
@@ -206,10 +214,14 @@ class visualizeSystem{
     textSize(20);
     fill(0, 0, 240);
     stroke(0);
-    text(this.elementControllerArray[0].getValue().toFixed(1), 340, -200);
-    text(this.elementControllerArray[1].getValue().toFixed(1), 420, -200);
-    text(this.elementControllerArray[2].getValue().toFixed(1), 340, -140);
-    text(this.elementControllerArray[3].getValue().toFixed(1), 420, -140);
+    //text(this.elementControllerArray[0].getValue().toFixed(1), 340, -200);
+    //text(this.elementControllerArray[1].getValue().toFixed(1), 420, -200);
+    //text(this.elementControllerArray[2].getValue().toFixed(1), 340, -140);
+    //text(this.elementControllerArray[3].getValue().toFixed(1), 420, -140);
+    text(this.elemStrings[0], 340, -200);
+    text(this.elemStrings[1], 420, -200);
+    text(this.elemStrings[2], 340, -140);
+    text(this.elemStrings[3], 420, -140);
     stroke(0, 0, 240);
     strokeWeight(1.0);
     line(260, -80, 500, -80);
