@@ -23,13 +23,16 @@
 // 三角形のあれこれとかも必要なくなるしコードが簡潔になるのはいいよね。
 
 // とりあえずキー名をスライダー作るときに登録しちゃおうね。後付けだと増やせない。
+// hitをいじります・・たとえば横なら、マージンを設定して・・んー。
+// 横スライダーの場合：topMarginとbottomMarginを設定してマウスダウンの位置をそれにより生じるrectの範囲内かどうかで
+// 判定して中にあればactivateされる感じ、です。縦：同じく。
 
 // クラス名のイニシャルは大文字がいいよね。
 let controller; // SliderSetのエイリアスとしてcontrollerを定着させたい感じ。
 let backgroundColor;
 
 function setup() {
-	createCanvas(360, 360);
+	createCanvas(360, 500);
 	noStroke();
 	preparation();
 	backgroundColor = color(0);
@@ -45,6 +48,8 @@ function draw() {
 	text(controller.red, 310, 40);
 	text(controller.green, 310, 80);
 	text(controller.blue, 310, 120);
+  text(Math.floor(controller.rect1), 40, 170);
+  rect(60, controller.rect1 + 198, 20, 6);
 	if(controller.active){
 		backgroundColor = color(controller.red, controller.green, controller.blue); // いぇい、成功！！
 	}
@@ -54,15 +59,17 @@ function preparation(){
 	controller = new SliderSet();
 	let cursor1 = new RectCursor(8, 16);
 	cursor1.setColor(color(249, 176, 180), color(237, 28, 36));
-	let slider1 = new HorizontalSlider("red", 0, 255, cursor1, 40, 20, 275);
+	let slider1 = new HorizontalSlider("red", 0, 255, cursor1, 40, 20, 275, 12, 12);
 	let cursor2 = new RectCursor(8, 16);
 	cursor2.setColor(color(180, 241, 198), color(34, 177, 76));
-	let slider2 = new HorizontalSlider("green", 0, 255, cursor2, 80, 20, 275);
+	let slider2 = new HorizontalSlider("green", 0, 255, cursor2, 80, 20, 275, 12, 12);
 	let cursor3 = new RectCursor(8, 16);
 	cursor3.setColor(color(197, 200, 239), color(63, 72, 204));
-	let slider3 = new HorizontalSlider("blue", 0, 255, cursor3, 120, 20, 275);
-	controller.registMulti([slider1, slider2, slider3]);
-	//controller.registKeyMulti(["red", "green", "blue"]);
+	let slider3 = new HorizontalSlider("blue", 0, 255, cursor3, 120, 20, 275, 12, 12);
+  let cursor4 = new CircleCursor(10, 10);
+  cursor4.setColor(color(200, 255, 200), color(0, 255, 0));
+  let slider4 = new VerticalSlider("rect1", 0, 100, cursor4, 40, 200, 300, 15, 15);
+	controller.registMulti([slider1, slider2, slider3, slider4]);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -112,8 +119,8 @@ class Slider{
     this.maxValue = newMaxValue; // maxの変更
   }
   hit(x, y){
-    // (x, y)がcursorの画像上かどうか判定する感じ
-    return this.cursor.hit(x, y, this.sliderPos);
+    // hit関数。activateするための条件。activeなときにupdateするとスライダー位置が変わり、返す値も変わる仕様。
+    return false;
   }
   update(){ /* 継承先により異なる */ }
   display(){
@@ -127,44 +134,53 @@ class Slider{
 
 // 縦のスライダー（ただし落ちない）
 class VerticalSlider extends Slider{
-  constructor(key, minValue, maxValue, cursor, posX, top, down, offSetY = 0){
+  constructor(key, minValue, maxValue, cursor, posX, top, bottom, leftMargin = 5, rightMargin = 5, offSetY = 0){
     super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posX = posX;
     this.top = top; // 上
-    this.down = down; // 下
+    this.bottom = bottom; // 下
+    this.leftMargin = leftMargin; // 左余白
+    this.rightMargin = rightMargin; // 右余白
     this.sliderPos = createVector(posX, top);
     this.offSetY = offSetY; // 設置位置によってはmouseYを直接使えないことがあるので・・
   }
   update(){
     if(this.active){
       // 縦スライダー
-      this.sliderPos.set(this.posX, constrain(mouseY + this.offSetY, this.top, this.down));
+      this.sliderPos.set(this.posX, constrain(mouseY + this.offSetY, this.top, this.bottom));
     }
   }
 	display(){
 		// 縦線。長方形でいいよね。
 		fill(255);
-		rect(this.posX - 2, this.top - 2, 4, this.down - this.top + 4);
+		rect(this.posX - 2, this.top - 2, 4, this.bottom - this.top + 4);
 		super.display();
 	}
+  hit(x, y){
+    const horizontal = (this.posX - this.leftMargin <= x && x <= this.posX + this.rightMargin);
+    const vertical = (this.top <= y && y <= this.bottom);
+    return horizontal && vertical;
+  }
   setPosY(y){
     this.sliderPos.y = y;
   }
   getValue(){
     // 縦スライダー
-    return map(this.sliderPos.y, this.top, this.down, this.minValue, this.maxValue);
+    return map(this.sliderPos.y, this.top, this.bottom, this.minValue, this.maxValue);
   }
 }
 
 // 横のスライダー、今回使うのはこっち（変化球ではない）
 class HorizontalSlider extends Slider{
-  constructor(key, minValue, maxValue, cursor, posY, left, right, offSetX = 0){
+  constructor(key, minValue, maxValue, cursor, posY, left, right, topMargin = 5, bottomMargin = 5, offSetX = 0){
     super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posY = posY;
     this.left = left; // 左
     this.right = right; // 右
+    this.topMargin = topMargin; // 反応範囲、上
+    this.bottomMargin = bottomMargin; // 反応範囲、下
     this.sliderPos = createVector(left, posY);
     this.offSetX = offSetX; // 設置位置によってはmouseXを直接・・以下略。
   }
@@ -180,6 +196,11 @@ class HorizontalSlider extends Slider{
 		rect(this.left - 2, this.posY - 2, this.right - this.left + 4, 4);
 		super.display();
 	}
+  hit(x, y){
+    const horizontal = (this.left <= x && x <= this.right);
+    const vertical = (this.posY - this.topMargin <= y && y <= this.posY + this.bottomMargin);
+    return horizontal && vertical;
+  }
   setPosX(x){
     this.sliderPos.x = x;
   }
@@ -196,13 +217,14 @@ class CircleSlider extends Slider{}
 // カーソル
 // 円、四角、三角。
 // activeとinActiveの画像を渡して共通の処理とするんだけど後でいいや。
+// カーソルのhit関数は廃止。スライダーベースで判定しよう。
+
 class Cursor{
   constructor(){
 		this.cursorColor = {}; // デフォルト時のカーソルカラー
     this.cursorImg = {};
 		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
   }
-  hit(x, y, pivotVector){ return false; }
   display(pivotVector, isActive){}
 	setColor(nonActiveColor, activeColor){
 		this.cursorColor.nonActiveColor = nonActiveColor;
@@ -222,9 +244,6 @@ class CircleCursor extends Cursor{
     this.cursorRadius = cursorRadius;
     this.offSetX = -cursorRadius;
     this.offSetY = -cursorRadius;
-  }
-  hit(x, y, pivotVector){
-    return dist(x, y, pivotVector.x, pivotVector.y) < this.cursorRadius;
   }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
@@ -250,9 +269,6 @@ class RectCursor extends Cursor{
     this.offSetX = -cursorHalfWidth;
     this.offSetY = -cursorHalfHeight;
   }
-  hit(x, y, pivotVector){
-    return abs(x - pivotVector.x) < this.cursorHalfWidth && abs(y - pivotVector.y) < this.cursorHalfHeight;
-  }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
 			// 画像貼り付けの場合
@@ -273,34 +289,12 @@ class RectCursor extends Cursor{
 // offSetはたとえばxならv1.x, v2.x, 0のうち小さい方。yも同様。これは画像貼り付けに使うデータで、
 // デフォルト三角形ならベクトル使うだけだから楽チン。
 class TriangleCursor extends Cursor{
-  constructor(v1, v2){
+  constructor(x1, y1, x2, y2){
     super();
-    this.cursorV1 = v1;
-    this.cursorV2 = v2;
+    this.cursorV1 = createVector(x1, y1);
+    this.cursorV2 = createVector(x2, y2);
     this.offSetX = Math.min(0, v1.x, v2.x);
     this.offSetY = Math.min(0, v1.y, v2.y);
-    // 計算に使う値（vertex1, vertex2が一次独立だから）|v1|^2 * |v2|^2 - (v1・v2)^2 > 0.
-    let n1 = v1.magSq();
-    let n2 = v2.magSq();
-    let innerProd = p5.Vector.dot(v1, v2);
-    this.dValue = n1 * n2 - innerProd * innerProd; // 正の数。
-    // まず|v2|^2 * v1と|v1|^2 * v2, さらに(v1・v2) * v2と(v1・v2) * v1を計算する。
-    let v3 = p5.Vector.mult(v1, n2);
-    let v4 = p5.Vector.mult(v2, n1);
-    let v5 = p5.Vector.mult(v2, innerProd);
-    let v6 = p5.Vector.mult(v1, innerProd);
-    // はじめのは|v2|^2 * v1 - (v1・v2) * v2. check1・v > 0が条件1.
-    this.checkVector1 = p5.Vector.sub(v3, v5);
-    // 次のやつは|v1|^2 * v2 - (v1・v2) * v1. check2・v > 0が条件2.
-    this.checkVector2 = p5.Vector.sub(v4, v6);
-    // さいごにこの二つを足してcheck3とする。 check3・v < D が条件3.
-    this.checkVector3 = p5.Vector.add(this.checkVector1, this.checkVector2);
-  }
-  hit(x, y, pivotVector){
-    let check1 = (x - pivotVector.x) * this.checkVector1.x + (y - pivotVector.y) * this.checkVector1.y;
-    let check2 = (x - pivotVector.x) * this.checkVector2.x + (y - pivotVector.y) * this.checkVector2.y;
-    let check3 = (x - pivotVector.x) * this.checkVector3.x + (y - pivotVector.y) * this.checkVector3.y;
-    return check1 > 0 && check2 > 0 && check3 < this.dValue;
   }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
