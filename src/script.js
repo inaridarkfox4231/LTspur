@@ -166,25 +166,29 @@ class visualizeSystem{
   }
   prepareController(){
     // 行列要素をいじる4本のスライダーを用意。横は？とりあえず-6～6(middle)にする。
-    let slider11 = new HorizontalSlider(-6, 6, new CircleCursor(10), -80, 260, 500, -240);
-    let slider12 = new HorizontalSlider(-6, 6, new CircleCursor(10), -40, 260, 500, -240);
-    let slider21 = new HorizontalSlider(-6, 6, new CircleCursor(10), 0, 260, 500, -240);
-    let slider22 = new HorizontalSlider(-6, 6, new CircleCursor(10), 40, 260, 500, -240);
+    let s1 = new HorizontalSlider("elem11", -6, 6, new CircleCursor(10), -80, 260, 500, 10, 10, -240);
+    let s2 = new HorizontalSlider("elem12", -6, 6, new CircleCursor(10), -40, 260, 500, 10, 10, -240);
+    let s3 = new HorizontalSlider("elem21", -6, 6, new CircleCursor(10), 0, 260, 500, 10, 10, -240);
+    let s4 = new HorizontalSlider("elem22", -6, 6, new CircleCursor(10), 40, 260, 500, 10, 10, -240);
     // デフォルトを0, 1, -1, 0にする
-    slider11.setPosX(380);
-    slider12.setPosX(400);
-    slider21.setPosX(360);
-    slider22.setPosX(380);
+    s1.setPosX(380);
+    s2.setPosX(400);
+    s3.setPosX(360);
+    s4.setPosX(380);
     // カラーバンドをいじる2本のスライダーを用意。0～239.
-    const v1 = createVector(-10, -20);
-    const v2 = createVector(10, -20);
-    const v3 = createVector(-10, 20);
-    const v4 = createVector(10, 20);
-    let sliderUpper = new HorizontalSlider(0, 239, new TriangleCursor(v1, v2), 100, 260, 499, -240);
-    let sliderLower = new HorizontalSlider(0, 239, new TriangleCursor(v3, v4), 140, 260, 499, -240);
+    //const v1 = createVector(-10, -20);
+    //const v2 = createVector(10, -20);
+    //const v3 = createVector(-10, 20);
+    //const v4 = createVector(10, 20);
+    let s5 = new HorizontalSlider("color1", 0, 239, new TriangleCursor(-10, -20, 10, -20), 100, 260, 499, 20, 0, -240);
+    let s6 = new HorizontalSlider("color2", 0, 239, new TriangleCursor(-10, 20, 10, 20), 140, 260, 499, 0, 20, -240);
+    // 色設定
+    [s1, s2, s3, s4, s5, s6].forEach((s) => { s.setColor(); })
+    s5.hideRail();
+    s6.hideRail();
     // 登録
-    this.controller.regist([slider11, slider12, slider21, slider22, sliderUpper, sliderLower]);
-    this.controller.registKeyMulti(["elem11", "elem12", "elem21", "elem22", "color1", "color2"]);
+    this.controller.registMulti([s1, s2, s3, s4, s5, s6]);
+    //this.controller.registKeyMulti(["elem11", "elem12", "elem21", "elem22", "color1", "color2"]);
   }
   update(){
     // 各種update.
@@ -202,11 +206,12 @@ class visualizeSystem{
     let key = this.controller.activeSliderKey;
     if(["elem11", "elem12", "elem21", "elem22"].indexOf(key, 0) >= 0){
       // 要素の変更
-      this.tf[key] = Math.floor(this.controller.getValueByKey(key) * 10) * 0.1;
+      //this.tf[key] = Math.floor(this.controller.getValueByKey(key) * 10) * 0.1;
+      this.tf[key] = Math.floor(this.controller[key] * 10) * 0.1;
     }else if(["color1", "color2"].indexOf(key, 0) >= 0){
       // カラーバンドの変更
-      const c1 = this.controller.getValueByKey("color1");
-      const c2 = this.controller.getValueByKey("color2");
+      const c1 = this.controller["color1"];
+      const c2 = this.controller["color2"];
       this.pivotHue = Math.min(c1, c2);
       this.bandWidth = abs(c2 - c1) + 1;
       this.diffHue = 0;
@@ -275,13 +280,13 @@ class visualizeSystem{
     text(this.tf.elem12.toFixed(1), 420, -200);
     text(this.tf.elem21.toFixed(1), 340, -140);
     text(this.tf.elem22.toFixed(1), 420, -140);
-    stroke(0, 0, 240);
-    strokeWeight(1.0);
-    line(260, -80, 500, -80);
-    line(260, -40, 500, -40);
-    line(260, 0, 500, 0);
-    line(260, 40, 500, 40);
-    noStroke();
+    //stroke(0, 0, 240);
+    //strokeWeight(1.0);
+    //line(260, -80, 500, -80);
+    //line(260, -40, 500, -40);
+    //line(260, 0, 500, 0);
+    //line(260, 40, 500, 40);
+    //noStroke();
     this.controller.display();
     image(colorBandImg, 260, 100);
     // モード切替パネル（クリックで変更）
@@ -457,13 +462,15 @@ class ObjectPool{
 // setImgはスライダーにも用意してカーソルにアクセスできるようにする。
 
 class Slider{
-  constructor(minValue, maxValue, cursor){
+  constructor(key, minValue, maxValue, cursor){
+    this.key = key; // 作るときにキーを
     this.minValue = minValue;
     this.maxValue = maxValue;
     // 円とか三角形とか。offSetは要らないかも。三角形はベクトルでやる。四角形はいわずもがな。
     this.cursor = cursor;
     // activeのとき、カーソルが動く
     this.active = false;
+    this.showRail = true; // レールを消したいときはこれ
   }
   activate(){
     this.active = true;
@@ -471,15 +478,23 @@ class Slider{
   inActivate(){
     this.active = false;
   }
+  hideRail(){
+    // レールを消したいとき
+    this.showRail = false;
+  }
   setMinValue(newMinValue){
     this.minValue = newMinValue; // min値の変更
   }
   setMaxValue(newMaxValue){
     this.maxValue = newMaxValue; // maxの変更
   }
+  setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){
+    // スライダー経由でカーソルの色を変える感じ。
+    this.cursor.setColor(nonActiveColor, activeColor);
+  }
   hit(x, y){
-    // (x, y)がcursorの画像上かどうか判定する感じ
-    return this.cursor.hit(x, y, this.sliderPos);
+    // hit関数。activateするための条件。activeなときにupdateするとスライダー位置が変わり、返す値も変わる仕様。
+    return false;
   }
   update(){ /* 継承先により異なる */ }
   display(){
@@ -493,38 +508,56 @@ class Slider{
 
 // 縦のスライダー（ただし落ちない）
 class VerticalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posX, top, down, offSetY = 0){
-    super(minValue, maxValue, cursor);
+  constructor(key, minValue, maxValue, cursor, posX, top, bottom, leftMargin = 5, rightMargin = 5, offSetY = 0){
+    super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posX = posX;
     this.top = top; // 上
-    this.down = down; // 下
+    this.bottom = bottom; // 下
+    this.leftMargin = leftMargin; // 左余白
+    this.rightMargin = rightMargin; // 右余白
     this.sliderPos = createVector(posX, top);
     this.offSetY = offSetY; // 設置位置によってはmouseYを直接使えないことがあるので・・
   }
   update(){
     if(this.active){
       // 縦スライダー
-      this.sliderPos.set(this.posX, constrain(mouseY + this.offSetY, this.top, this.down));
+      this.sliderPos.set(this.posX, constrain(mouseY + this.offSetY, this.top, this.bottom));
     }
+  }
+	display(){
+		// 縦線。長方形でいいよね。
+    if(this.showRail){
+		  fill(color('white'));
+      noStroke();
+		  rect(this.posX - 2, this.top, 4, this.bottom - this.top);
+    }
+		super.display();
+	}
+  hit(x, y){
+    const horizontal = (this.posX - this.leftMargin <= x && x <= this.posX + this.rightMargin);
+    const vertical = (this.top <= y && y <= this.bottom);
+    return horizontal && vertical;
   }
   setPosY(y){
     this.sliderPos.y = y;
   }
   getValue(){
     // 縦スライダー
-    return map(this.sliderPos.y, this.top, this.down, this.minValue, this.maxValue);
+    return map(this.sliderPos.y, this.top, this.bottom, this.minValue, this.maxValue);
   }
 }
 
 // 横のスライダー、今回使うのはこっち（変化球ではない）
 class HorizontalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posY, left, right, offSetX = 0){
-    super(minValue, maxValue, cursor);
+  constructor(key, minValue, maxValue, cursor, posY, left, right, topMargin = 5, bottomMargin = 5, offSetX = 0){
+    super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posY = posY;
     this.left = left; // 左
     this.right = right; // 右
+    this.topMargin = topMargin; // 反応範囲、上
+    this.bottomMargin = bottomMargin; // 反応範囲、下
     this.sliderPos = createVector(left, posY);
     this.offSetX = offSetX; // 設置位置によってはmouseXを直接・・以下略。
   }
@@ -533,6 +566,20 @@ class HorizontalSlider extends Slider{
       // 横スライダー
       this.sliderPos.set(constrain(mouseX + this.offSetX, this.left, this.right), this.posY);
     }
+  }
+	display(){
+		// 横線。長方形でいいよね。
+    if(this.showRail){
+		  fill(color('white'));
+      noStroke();
+		  rect(this.left, this.posY - 2, this.right - this.left, 4);
+    }
+		super.display();
+	}
+  hit(x, y){
+    const horizontal = (this.left <= x && x <= this.right);
+    const vertical = (this.posY - this.topMargin <= y && y <= this.posY + this.bottomMargin);
+    return horizontal && vertical;
   }
   setPosX(x){
     this.sliderPos.x = x;
@@ -543,23 +590,29 @@ class HorizontalSlider extends Slider{
   }
 }
 
-// 円形スライダー（？）
-
 // カーソル
 // 円、四角、三角。
 // activeとinActiveの画像を渡して共通の処理とするんだけど後でいいや。
+// カーソルのhit関数は廃止。スライダーベースで判定しよう。
+
 class Cursor{
   constructor(){
+		this.cursorColor = {}; // デフォルト時のカーソルカラー
     this.cursorImg = {};
 		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
   }
-  hit(x, y, pivotVector){ return false; }
   display(pivotVector, isActive){}
+	setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){
+    // デフォルトはロイヤルブルーとレッド
+		this.cursorColor.nonActiveColor = nonActiveColor;
+		this.cursorColor.activeColor = activeColor;
+	}
   setImg(nonActiveImg, activeImg){
     this.useOriginalImg = true;
 		this.cursorImg.nonActiveImg = nonActiveImg;
 		this.cursorImg.activeImg = activeImg;
 	}
+
 }
 
 class CircleCursor extends Cursor{
@@ -568,9 +621,6 @@ class CircleCursor extends Cursor{
     this.cursorRadius = cursorRadius;
     this.offSetX = -cursorRadius;
     this.offSetY = -cursorRadius;
-  }
-  hit(x, y, pivotVector){
-    return dist(x, y, pivotVector.x, pivotVector.y) < this.cursorRadius;
   }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
@@ -581,7 +631,7 @@ class CircleCursor extends Cursor{
       image(this.cursorImg[imgPath], x, y);
 		}else{
       // デフォルト
-      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      if(isActive){ fill(this.cursorColor.activeColor); }else{ fill(this.cursorColor.nonActiveColor); }
       ellipse(pivotVector.x, pivotVector.y, this.cursorRadius * 2, this.cursorRadius * 2);
 		}
   }
@@ -596,9 +646,6 @@ class RectCursor extends Cursor{
     this.offSetX = -cursorHalfWidth;
     this.offSetY = -cursorHalfHeight;
   }
-  hit(x, y, pivotVector){
-    return abs(x - pivotVector.x) < this.cursorHalfWidth && abs(y - pivotVector.y) < this.cursorHalfHeight;
-  }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
 			// 画像貼り付けの場合
@@ -608,7 +655,7 @@ class RectCursor extends Cursor{
       image(this.cursorImg[imgPath], x, y);
 		}else{
 			// デフォルト
-      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      if(isActive){ fill(this.cursorColor.activeColor); }else{ fill(this.cursorColor.nonActiveColor); }
       rect(pivotVector.x + this.offSetX, pivotVector.y + this.offSetY, this.cursorHalfWidth * 2, this.cursorHalfHeight * 2);
 		}
   }
@@ -619,34 +666,12 @@ class RectCursor extends Cursor{
 // offSetはたとえばxならv1.x, v2.x, 0のうち小さい方。yも同様。これは画像貼り付けに使うデータで、
 // デフォルト三角形ならベクトル使うだけだから楽チン。
 class TriangleCursor extends Cursor{
-  constructor(v1, v2){
+  constructor(x1, y1, x2, y2){
     super();
-    this.cursorV1 = v1;
-    this.cursorV2 = v2;
-    this.offSetX = Math.min(0, v1.x, v2.x);
-    this.offSetY = Math.min(0, v1.y, v2.y);
-    // 計算に使う値（vertex1, vertex2が一次独立だから）|v1|^2 * |v2|^2 - (v1・v2)^2 > 0.
-    let n1 = v1.magSq();
-    let n2 = v2.magSq();
-    let innerProd = p5.Vector.dot(v1, v2);
-    this.dValue = n1 * n2 - innerProd * innerProd; // 正の数。
-    // まず|v2|^2 * v1と|v1|^2 * v2, さらに(v1・v2) * v2と(v1・v2) * v1を計算する。
-    let v3 = p5.Vector.mult(v1, n2);
-    let v4 = p5.Vector.mult(v2, n1);
-    let v5 = p5.Vector.mult(v2, innerProd);
-    let v6 = p5.Vector.mult(v1, innerProd);
-    // はじめのは|v2|^2 * v1 - (v1・v2) * v2. check1・v > 0が条件1.
-    this.checkVector1 = p5.Vector.sub(v3, v5);
-    // 次のやつは|v1|^2 * v2 - (v1・v2) * v1. check2・v > 0が条件2.
-    this.checkVector2 = p5.Vector.sub(v4, v6);
-    // さいごにこの二つを足してcheck3とする。 check3・v < D が条件3.
-    this.checkVector3 = p5.Vector.add(this.checkVector1, this.checkVector2);
-  }
-  hit(x, y, pivotVector){
-    let check1 = (x - pivotVector.x) * this.checkVector1.x + (y - pivotVector.y) * this.checkVector1.y;
-    let check2 = (x - pivotVector.x) * this.checkVector2.x + (y - pivotVector.y) * this.checkVector2.y;
-    let check3 = (x - pivotVector.x) * this.checkVector3.x + (y - pivotVector.y) * this.checkVector3.y;
-    return check1 > 0 && check2 > 0 && check3 < this.dValue;
+    this.cursorV1 = createVector(x1, y1);
+    this.cursorV2 = createVector(x2, y2);
+    this.offSetX = Math.min(0, x1, x2);
+    this.offSetY = Math.min(0, y1, y2);
   }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
@@ -657,7 +682,7 @@ class TriangleCursor extends Cursor{
       image(this.cursorImg[imgPath], x, y);
 		}else{
 			// デフォルト
-      if(isActive){ fill(0, 180, 240); }else{ fill(170, 180, 240); }
+      if(isActive){ fill(this.cursorColor.activeColor); }else{ fill(this.cursorColor.nonActiveColor); }
       let x1 = pivotVector.x + this.cursorV1.x;
       let y1 = pivotVector.y + this.cursorV1.y;
       let x2 = pivotVector.x + this.cursorV2.x;
@@ -683,24 +708,19 @@ class SliderSet{
     this.active = false; // activeなスライダーがあるかどうか
 	}
 	regist(slider){
-		// sliderは複数のスライダーからなる配列でもOK.
+    // 登録時にキーから接続できるようにして・・さらにキーから値を取得できるようにパスを作る
 		this.sliderArray.add(slider);
+    this.sliderDict[slider.key] = slider;
+    this[slider.key] = slider.getValue();
 	}
-	registKeyMulti(keyArray){
-		for(let i = 0; i < this.sliderArray.length; i++){
-			this.sliderDict[keyArray[i]] = this.sliderArray[i];
-			this.sliderArray[i].key = keyArray[i]; // スライダーにキーを登録する
-		}
-	}
-	getValueByIndex(index){
-		return this.sliderArray[index].getValue();
-	}
-	getValueByKey(key){
-		// 可読性のためにキーでも取得できるようにする・・必要かどうかわからんけど。
-		return this.sliderDict[key].getValue();
-	}
+  registMulti(sliderArray){
+    // 複数版
+    sliderArray.forEach((slider) => { this.regist(slider); })
+  }
 	update(){
 		this.sliderArray.every("update");
+		// アクティブな場合のみ値変更
+		if(this.active){ this[this.activeSliderKey] = this.sliderDict[this.activeSliderKey].getValue(); }
 	}
 	display(){
 		this.sliderArray.every("display");
@@ -727,21 +747,18 @@ class SliderSet{
 // Cross Reference Array.
 
 // 配列クラスを継承して、要素を追加するときに自動的に親への参照が作られるようにしたもの
+// 配列クラスを継承して、要素を追加するときに自動的に親への参照が作られるようにしたもの
 class CrossReferenceArray extends Array{
 	constructor(){
     super();
 	}
   add(element){
-    if(element.length === undefined){
-      this.push(element);
-      element.belongingArray = this; // 所属配列への参照
-    }else{
-      for(let i = 0; i < element.length; i++){
-        let e = element[i];
-        this.push(e);
-        e.belongingArray = this; // 複数の場合
-      }
-    }
+    this.push(element);
+    element.belongingArray = this; // 所属配列への参照
+  }
+  addMulti(elementArray){
+    // 複数の場合
+    elementArray.forEach((element) => { this.add(element); })
   }
   remove(element){
     let index = this.indexOf(element, 0);

@@ -1,5 +1,10 @@
 "use strict";
 
+// いくつか変更点
+// まず、スライダー経由でカーソルの色を変えられるようにしよう。
+// あと、レールのデフォルトはnoStroke()を忘れるとえらいことになる。
+// 色指定も255とかでなくcolor('white')のように指定しないとcolorModeの影響を受けてしまう。その辺かな。
+
 let controller;
 let backgroundColor;
 
@@ -110,6 +115,10 @@ class Slider{
   setMaxValue(newMaxValue){
     this.maxValue = newMaxValue; // maxの変更
   }
+  setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){
+    // スライダー経由でカーソルの色を変える感じ。
+    this.cursor.setColor(nonActiveColor, activeColor);
+  }
   hit(x, y){
     // hit関数。activateするための条件。activeなときにupdateするとスライダー位置が変わり、返す値も変わる仕様。
     return false;
@@ -146,7 +155,8 @@ class VerticalSlider extends Slider{
 	display(){
 		// 縦線。長方形でいいよね。
     if(this.showRail){
-		  fill(255);
+		  fill(color('white'));
+      noStroke();
 		  rect(this.posX - 2, this.top, 4, this.bottom - this.top);
     }
 		super.display();
@@ -187,7 +197,8 @@ class HorizontalSlider extends Slider{
 	display(){
 		// 横線。長方形でいいよね。
     if(this.showRail){
-		  fill(255);
+		  fill(color('white'));
+      noStroke();
 		  rect(this.left, this.posY - 2, this.right - this.left, 4);
     }
 		super.display();
@@ -218,7 +229,8 @@ class Cursor{
 		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
   }
   display(pivotVector, isActive){}
-	setColor(nonActiveColor, activeColor){
+  setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){
+    // デフォルトはロイヤルブルーとレッド
 		this.cursorColor.nonActiveColor = nonActiveColor;
 		this.cursorColor.activeColor = activeColor;
 	}
