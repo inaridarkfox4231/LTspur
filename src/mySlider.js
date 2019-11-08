@@ -22,6 +22,8 @@
 // 今スライダーのhitからカーソルのhitに移行してるけどここを個別処理にしてマージンがどうのこうのってやれば良さそう。
 // 三角形のあれこれとかも必要なくなるしコードが簡潔になるのはいいよね。
 
+// とりあえずキー名をスライダー作るときに登録しちゃおうね。後付けだと増やせない。
+
 // クラス名のイニシャルは大文字がいいよね。
 let controller; // SliderSetのエイリアスとしてcontrollerを定着させたい感じ。
 let backgroundColor;
@@ -52,15 +54,15 @@ function preparation(){
 	controller = new SliderSet();
 	let cursor1 = new RectCursor(8, 16);
 	cursor1.setColor(color(249, 176, 180), color(237, 28, 36));
-	let slider1 = new HorizontalSlider(0, 255, cursor1, 40, 20, 275);
+	let slider1 = new HorizontalSlider("red", 0, 255, cursor1, 40, 20, 275);
 	let cursor2 = new RectCursor(8, 16);
 	cursor2.setColor(color(180, 241, 198), color(34, 177, 76));
-	let slider2 = new HorizontalSlider(0, 255, cursor2, 80, 20, 275);
+	let slider2 = new HorizontalSlider("green", 0, 255, cursor2, 80, 20, 275);
 	let cursor3 = new RectCursor(8, 16);
 	cursor3.setColor(color(197, 200, 239), color(63, 72, 204));
-	let slider3 = new HorizontalSlider(0, 255, cursor3, 120, 20, 275);
-	controller.regist([slider1, slider2, slider3]);
-	controller.registKeyMulti(["red", "green", "blue"]);
+	let slider3 = new HorizontalSlider("blue", 0, 255, cursor3, 120, 20, 275);
+	controller.registMulti([slider1, slider2, slider3]);
+	//controller.registKeyMulti(["red", "green", "blue"]);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -88,7 +90,8 @@ function touchEnded(){
 // Slider and Cursor.
 
 class Slider{
-  constructor(minValue, maxValue, cursor){
+  constructor(key, minValue, maxValue, cursor){
+    this.key = key; // 作るときにキーを
     this.minValue = minValue;
     this.maxValue = maxValue;
     // 円とか三角形とか。offSetは要らないかも。三角形はベクトルでやる。四角形はいわずもがな。
@@ -124,8 +127,8 @@ class Slider{
 
 // 縦のスライダー（ただし落ちない）
 class VerticalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posX, top, down, offSetY = 0){
-    super(minValue, maxValue, cursor);
+  constructor(key, minValue, maxValue, cursor, posX, top, down, offSetY = 0){
+    super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posX = posX;
     this.top = top; // 上
@@ -156,8 +159,8 @@ class VerticalSlider extends Slider{
 
 // 横のスライダー、今回使うのはこっち（変化球ではない）
 class HorizontalSlider extends Slider{
-  constructor(minValue, maxValue, cursor, posY, left, right, offSetX = 0){
-    super(minValue, maxValue, cursor);
+  constructor(key, minValue, maxValue, cursor, posY, left, right, offSetX = 0){
+    super(key, minValue, maxValue, cursor);
     // 位置関係
     this.posY = posY;
     this.left = left; // 左
@@ -336,23 +339,17 @@ class SliderSet{
     this.active = false; // activeなスライダーがあるかどうか
 	}
 	regist(slider){
-		// sliderは複数のスライダーからなる配列でもOK.
+    // 登録時にキーから接続できるようにして・・さらにキーから値を取得できるようにパスを作る
 		this.sliderArray.add(slider);
+    this.sliderDict[slider.key] = slider;
+    this[slider.key] = slider.getValue();
 	}
-	registKeyMulti(keyArray){
-		for(let i = 0; i < this.sliderArray.length; i++){
-			let key = keyArray[i];
-			this.sliderDict[key] = this.sliderArray[i];
-			this.sliderArray[i].key = key; // スライダーにキーを登録する
-			this[key] = this.sliderArray[i].getValue();
-		}
-	}
+  registMulti(sliderArray){
+    // 複数版
+    sliderArray.forEach((slider) => { this.regist(slider); })
+  }
 	getValueByIndex(index){
 		return this.sliderArray[index].getValue();
-	}
-	getValueByKey(key){
-		// 可読性のためにキーでも取得できるようにする・・必要かどうかわからんけど。
-		return this.sliderDict[key].getValue();
 	}
 	update(){
 		this.sliderArray.every("update");
@@ -389,16 +386,12 @@ class CrossReferenceArray extends Array{
     super();
 	}
   add(element){
-    if(element.length === undefined){
-      this.push(element);
-      element.belongingArray = this; // 所属配列への参照
-    }else{
-      for(let i = 0; i < element.length; i++){
-        let e = element[i];
-        this.push(e);
-        e.belongingArray = this; // 複数の場合
-      }
-    }
+    this.push(element);
+    element.belongingArray = this; // 所属配列への参照
+  }
+  addMulti(elementArray){
+    // 複数の場合
+    elementArray.forEach((element) => { this.add(element); })
   }
   remove(element){
     let index = this.indexOf(element, 0);
