@@ -1,12 +1,19 @@
 // 仕様
 // 720x480
 
+// 今一番やりたい：unitPoolを作る。
+// unitのプール化、帰ったらとりかかろう。
+
+
+
 // 変更案
 // 1. グローバル変数を分かりやすいようにgl_みたいの付けてグローバル汚染しにくくする（特にクラス以外の変数）
 // 今のところはいいかな・・画像とか全体とかだけだし・・
 // 2. タッチでも動くようにするとか
 // 3. スライダーの集合をクラス化してみるとか？CrossReferenceArrayやメソッドなどを分離したい。
 // 値の取得も辞書にして取得できるようにするとか。んー。インデックスでもいいけども。
+// 4. サイズの480とかコンフィグの280を定数化したほうがよさそう
+// これとは別に2次の場合とかスライダーでいじってみたら面白そう
 
 // letとconstの使い分けをはっきりする。
 
@@ -102,12 +109,12 @@ function mouseReleased(){
 // 以下はタッチ用
 function touchStarted(){
   system.controller.activate(-240, -240);
-  return false;
+  //return false;
 }
 
 function touchEnded(){
   system.controller.inActivate();
-  return false;
+  //return false;
 }
 
 // モードチェンジ（該当箇所をクリック）
