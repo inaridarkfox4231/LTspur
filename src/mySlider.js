@@ -50,6 +50,8 @@ function draw() {
 	text(controller.blue, 310, 120);
   text(Math.floor(controller.rect1), 40, 170);
   rect(60, controller.rect1 + 198, 20, 6);
+  let rectWidth = abs(controller.edge1 - controller.edge2);
+  rect(Math.min(controller.edge1, controller.edge2), 160, rectWidth, 10);
 	if(controller.active){
 		backgroundColor = color(controller.red, controller.green, controller.blue); // いぇい、成功！！
 	}
@@ -57,19 +59,32 @@ function draw() {
 
 function preparation(){
 	controller = new SliderSet();
+
 	let cursor1 = new RectCursor(8, 16);
 	cursor1.setColor(color(249, 176, 180), color(237, 28, 36));
 	let slider1 = new HorizontalSlider("red", 0, 255, cursor1, 40, 20, 275, 12, 12);
+
 	let cursor2 = new RectCursor(8, 16);
 	cursor2.setColor(color(180, 241, 198), color(34, 177, 76));
 	let slider2 = new HorizontalSlider("green", 0, 255, cursor2, 80, 20, 275, 12, 12);
+
 	let cursor3 = new RectCursor(8, 16);
 	cursor3.setColor(color(197, 200, 239), color(63, 72, 204));
 	let slider3 = new HorizontalSlider("blue", 0, 255, cursor3, 120, 20, 275, 12, 12);
+
   let cursor4 = new CircleCursor(10, 10);
   cursor4.setColor(color(200, 255, 200), color(0, 255, 0));
   let slider4 = new VerticalSlider("rect1", 0, 100, cursor4, 40, 200, 300, 15, 15);
-	controller.registMulti([slider1, slider2, slider3, slider4]);
+
+  let cursor5 = new TriangleCursor(-8, -20, 8, -20);
+  cursor5.setColor(color(220), color(140));
+  let slider5 = new HorizontalSlider("edge1", 160, 260, cursor5, 220, 160, 260, 20, 0);
+
+  let cursor6 = new TriangleCursor(-8, 20, 8, 20);
+  cursor6.setColor(color(220), color(140));
+  let slider6 = new HorizontalSlider("edge2", 160, 260, cursor6, 220, 160, 260, 0, 20);
+
+	controller.registMulti([slider1, slider2, slider3, slider4, slider5, slider6]);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -105,12 +120,17 @@ class Slider{
     this.cursor = cursor;
     // activeのとき、カーソルが動く
     this.active = false;
+    this.showRail = true; // レールを消したいときはこれ
   }
   activate(){
     this.active = true;
   }
   inActivate(){
     this.active = false;
+  }
+  hideRail(){
+    // レールを消したいとき
+    this.showRail = false;
   }
   setMinValue(newMinValue){
     this.minValue = newMinValue; // min値の変更
@@ -153,8 +173,10 @@ class VerticalSlider extends Slider{
   }
 	display(){
 		// 縦線。長方形でいいよね。
-		fill(255);
-		rect(this.posX - 2, this.top - 2, 4, this.bottom - this.top + 4);
+    if(this.showRail){
+		  fill(255);
+		  rect(this.posX - 2, this.top, 4, this.bottom - this.top);
+    }
 		super.display();
 	}
   hit(x, y){
@@ -192,8 +214,10 @@ class HorizontalSlider extends Slider{
   }
 	display(){
 		// 横線。長方形でいいよね。
-		fill(255);
-		rect(this.left - 2, this.posY - 2, this.right - this.left + 4, 4);
+    if(this.showRail){
+		  fill(255);
+		  rect(this.left, this.posY - 2, this.right - this.left, 4);
+    }
 		super.display();
 	}
   hit(x, y){
@@ -293,8 +317,8 @@ class TriangleCursor extends Cursor{
     super();
     this.cursorV1 = createVector(x1, y1);
     this.cursorV2 = createVector(x2, y2);
-    this.offSetX = Math.min(0, v1.x, v2.x);
-    this.offSetY = Math.min(0, v1.y, v2.y);
+    this.offSetX = Math.min(0, x1, x2);
+    this.offSetY = Math.min(0, y1, y2);
   }
   display(pivotVector, isActive){
 		if(this.useOriginalImg){
