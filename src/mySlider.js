@@ -227,6 +227,7 @@ class Cursor{
 		this.cursorColor = {}; // デフォルト時のカーソルカラー
     this.cursorImg = {};
 		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
+		this.setColor(); // 特別な色にする場合は変更する・・デフォルトの場合だから画像使うなら関係ない
   }
   display(pivotVector, isActive){}
   setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){

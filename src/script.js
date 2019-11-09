@@ -45,9 +45,11 @@ function preload(){
   colorBandImg = loadImage(headAddress + "colorBand.png"); // github用
   linearModeImg = loadImage(headAddress + "linear.png");
   dynamicModeImg = loadImage(headAddress + "dynamic.png");
+	dynamic2ModeImg = loadImage(headAddress + "dynamic2.png");
   //colorBandImg = loadImage("colorBand.png"); // OpenProcessing用
   //linearModeImg = loadImage("linear.png");
   //dynamicModeImg = loadImage("dynamic.png");
+	//dynamic2ModeImg = loadImage("dynamic2.png");
 }
 
 // 余白280の使い方。
@@ -59,7 +61,7 @@ function preload(){
 function setup(){
   createCanvas(760, 480);
   colorMode(HSB, 240);
-  modeImg = {"linear":linearModeImg, "dynamic":dynamicModeImg};
+  modeImg = {"linear":linearModeImg, "dynamic":dynamicModeImg, "dynamic2":dynamic2ModeImg};
   spurPool = new ObjectPool(() => { return new spur(); }, 1024);
   system = new visualizeSystem();
 }
@@ -121,7 +123,8 @@ function touchEnded(){
 function mouseClicked(){
   if(540 < mouseX && mouseX < 700 && 410 < mouseY && mouseY < 450){
     if(system.mode === "linear"){ system.mode = "dynamic"; return; }
-    else{ system.mode = "linear"; return; }
+    else if( system.mode === "dynamic"){ system.mode = "dynamic2"; return; }
+		else{ system.mode = "linear"; }
   }
   return;
 }
@@ -183,7 +186,8 @@ class visualizeSystem{
     let s5 = new HorizontalSlider("color1", 0, 239, new TriangleCursor(-10, -20, 10, -20), 100, 260, 499, 20, 0, -240);
     let s6 = new HorizontalSlider("color2", 0, 239, new TriangleCursor(-10, 20, 10, 20), 140, 260, 499, 0, 20, -240);
     // 色設定
-    [s1, s2, s3, s4, s5, s6].forEach((s) => { s.setColor(); })
+    //[s1, s2, s3, s4, s5, s6].forEach((s) => { s.setColor(); }) // デフォルトのカラーでいい
+    // 三角はレールいらない
     s5.hideRail();
     s6.hideRail();
     // 登録
@@ -250,10 +254,15 @@ class visualizeSystem{
              .setBehavior([timeLimitVanish(lifespan), fail]);
     }else if(this.mode === "dynamic"){
       // dynamicは力学系、(x, y)に基づいた速度を常に与えられ続けながらユニットが移動するパターン
-      const dynamicBehavior = dynamicSystem(this.tf.elem11, -this.tf.elem12, -this.tf.elem21, this.tf.elem22, 0.05);
+      const dynamicalBehavior = dynamicalSystem(this.tf.elem11, -this.tf.elem12, -this.tf.elem21, this.tf.elem22, 0.05);
       newUnit.setVelocity(0, 0)
-             .setBehavior([dynamicBehavior, timeLimitVanish(lifespan), fail]);
-    }
+             .setBehavior([dynamicalBehavior, timeLimitVanish(lifespan), fail]);
+    }else if(this.mode === "dynamic2"){
+			// 加速度が位置によって変化する仕様。
+			const dynamicalBehavior2 = dynamicalSystem_ver2(this.tf.elem11, -this.tf.elem12, -this.tf.elem21, this.tf.elem22, 0.004);
+			newUnit.setVelocity(0, 0)
+			       .setBehavior([dynamicalBehavior2, timeLimitVanish(lifespan), fail]);
+		}
   }
   createSpur(){
     // シュプールを生成する
@@ -280,13 +289,6 @@ class visualizeSystem{
     text(this.tf.elem12.toFixed(1), 420, -200);
     text(this.tf.elem21.toFixed(1), 340, -140);
     text(this.tf.elem22.toFixed(1), 420, -140);
-    //stroke(0, 0, 240);
-    //strokeWeight(1.0);
-    //line(260, -80, 500, -80);
-    //line(260, -40, 500, -40);
-    //line(260, 0, 500, 0);
-    //line(260, 40, 500, 40);
-    //noStroke();
     this.controller.display();
     image(colorBandImg, 260, 100);
     // モード切替パネル（クリックで変更）
@@ -600,6 +602,7 @@ class Cursor{
 		this.cursorColor = {}; // デフォルト時のカーソルカラー
     this.cursorImg = {};
 		this.useOriginalImg = false; // オリジナル画像を使わない場合はデフォルト。
+    this.setColor(); // 特別な色にする場合は変更する・・デフォルトの場合だから画像使うなら関係ない
   }
   display(pivotVector, isActive){}
 	setColor(nonActiveColor = color('#4169e1'), activeColor = color('#ff0000')){
@@ -783,12 +786,25 @@ function fail(obj){
 	if(obj.position.x < -240 || obj.position.x > 240 || obj.position.y < -240 || obj.position.y > 240){ obj.remove(); }
 }
 
+
 // 新しく追加したい。微分方程式のやつとかどう？
 // 速度が毎フレーム変化するの。
-function dynamicSystem(a, b, c, d, diff){
+// dx/dt = ax + by,
+// dy/dt = cx + dy.
+function dynamicalSystem(a, b, c, d, diff){
   return (obj) => {
     const vx = diff * (a * obj.position.x + b * obj.position.y);
     const vy = diff * (c * obj.position.x + d * obj.position.y);
     obj.setVelocity(vx, vy);
+  }
+}
+
+// こちらは加速度が位置によって変化するもの
+// d^2 x/d t^2 = ax + by,
+// d^2 y/d t^2 = cx + dy.
+function dynamicalSystem_ver2(a, b, c, d, diff){
+  return (obj) => {
+    obj.velocity.x += diff * (a * obj.position.x + b * obj.position.y);
+    obj.velocity.y += diff * (c * obj.position.x + d * obj.position.y);
   }
 }
