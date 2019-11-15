@@ -750,7 +750,6 @@ class SliderSet{
 // Cross Reference Array.
 
 // 配列クラスを継承して、要素を追加するときに自動的に親への参照が作られるようにしたもの
-// 配列クラスを継承して、要素を追加するときに自動的に親への参照が作られるようにしたもの
 class CrossReferenceArray extends Array{
 	constructor(){
     super();
